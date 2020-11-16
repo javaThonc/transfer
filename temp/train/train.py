@@ -7,11 +7,10 @@ import numpy as np
 import argparse
 import distutils.util
 import sys
-from keras.layers.core import Dense, Activation, Dropout 
-from keras.layers.recurrent import LSTM, GRU, SimpleRNN
-from keras.layers import Dense, Flatten, TimeDistributed
+from keras.layers.core import Dense
+from keras.layers.recurrent import LSTM
+from keras.layers import Dense, TimeDistributed
 from keras.models import Sequential
-from keras.layers import Input
 import os
 from keras import backend as K
 import keras
