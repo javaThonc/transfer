@@ -19,7 +19,7 @@ if __name__=='__main__':
 	# n-step prediction
     parser.add_argument('-s','--step', type=int, default=3)
 	# data path
-    parser.add_argument('-d','--data_file', type=str, default='../dataset/crsp.npy')
+    parser.add_argument('-d','--data_file', type=str, default='../dataset/data.npy')
 	# dimension
     parser.add_argument('-hd','--hidden_dim', type=int, default=50)
     parser.add_argument('-f','--freq_dim', type=int, default=10)
@@ -47,7 +47,8 @@ if __name__=='__main__':
     model.add(TimeDistributed(Dense(1)))
     rms = keras.optimizers.RMSprop(lr=args.learning_rate) 
     model.compile(loss="mse", optimizer=rms)
-    #model = build.build_model([1, args.hidden_dim, 1], args.freq_dim, args.learning_rate)
+    model = build.build_model([1, args.hidden_dim, 1], args.freq_dim, args.learning_rate)
+    print model.summary()
     best_error = np.inf
     best_epoch = 0
     
