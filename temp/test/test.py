@@ -41,7 +41,7 @@ if __name__=='__main__':
     print '> Loading data... '
     
     data_file = args.data_file
-    X_train, y_train, X_val, y_val, X_test, y_test, gt_test, max_data, min_data = build.load_data(data_file, step)
+    X_train, y_train, X_val, y_val, X_test, y_test, gt_test = build.load_data(data_file, step)
     test_len = X_test.shape[1]
 
     print '> Data Loaded. Compiling...'
@@ -63,7 +63,7 @@ if __name__=='__main__':
     model.compile(loss="mse", optimizer=rms)
 #loading model
     if step == 1:
-	    model_path = './snapshot/weights4000.hdf5'
+	    model_path = './snapshot/weights400.hdf5'
     elif step == 3:
 	    model_path = './snapshot/3d_50_10_17.00_0.00233.hdf5'
     elif step == 5:
@@ -76,6 +76,8 @@ if __name__=='__main__':
     print '> Predicting... '
     prediction = model.predict(X_test)
     #denormalization   
+    max_data = np.max(X_test, axis=1)
+    min_data = np.min(X_test, axis=1)
     #prediction = (np.squeeze(prediction) * (max_data - min_data) + (max_data + min_data))/2
     print prediction.shape
     error = np.sum((np.squeeze(prediction) - gt_test)**2) / (len(prediction)* prediction.shape[0])

@@ -36,8 +36,8 @@ def load_data(filename, step):
     gt_test = normalize(data[:,-test_split:])
     x_train = normalize(data[:,:train_split])
     y_train = normalize(data[:,day:train_split+day])
-    x_val = normalize(data[:,:val_split])
-    y_val = normalize(data[:,day:val_split+day])
+    x_val = normalize(data[:,train_split:val_split])
+    y_val = normalize(data[:,train_split+day:val_split+day])
     x_test = normalize(data[:, -test_split - day:-day])
     y_test = normalize(data[:, -test_split:])
     
@@ -49,7 +49,7 @@ def load_data(filename, step):
     y_val = np.reshape(y_val, (y_val.shape[0], y_val.shape[1], 1))
     y_test = np.reshape(y_test, (y_test.shape[0], y_test.shape[1], 1))
 
-    return [x_train, y_train, x_val, y_val, x_test, y_test, gt_test, max_data, min_data]
+    return [x_train, y_train, x_val, y_val, x_test, y_test, gt_test]
 
 #build the model
 def build_model(layers, freq, learning_rate):

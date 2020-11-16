@@ -41,14 +41,12 @@ if __name__=='__main__':
 
     print ('> Loading data... ')
     data_file = args.data_file
-    X_train, y_train, X_val, y_val, X_test, y_test, gt_test, max_data, min_data = build.load_data(data_file, step)
+    X_train, y_train, X_val, y_val, X_test, y_test, gt_test = build.load_data(data_file, step)
     train_len = X_train.shape[1]
     val_len = X_val.shape[1]
     test_len = X_test.shape[1]
 
     print ('> Data Loaded. Compiling...')
-    print(X_train.shape)
-    print(y_train.shape)
     #model = build.build_model([1, args.hidden_dim, 1], args.freq_dim, args.learning_rate)
     model = Sequential()
     model.add(LSTM(output_dim = args.hidden_dim, input_shape = (None,1) , return_sequences=True))
@@ -60,8 +58,6 @@ if __name__=='__main__':
     print (model.summary())
     for ii in range(int(args.niter/args.nsnapshot)):
         model.fit(X_train, y_train, batch_size = 45, nb_epoch=args.nsnapshot, validation_split=0)
-        
-            
         
         num_iter = str(args.nsnapshot * (ii+1))
         model.save_weights('./snapshot/weights{}.hdf5'.format(num_iter), overwrite = True)
