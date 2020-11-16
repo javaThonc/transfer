@@ -30,10 +30,10 @@ def load_data(filename, step):
     
     x_train = data[:,:train_split]
     y_train = data[:,day:train_split+day]
-    x_val = data[:,:val_split]
-    y_val = data[:,day:val_split+day]
-    x_test = data[:,:-day]
-    y_test = data[:,day:]
+    x_val = data[:,train_split:val_split]
+    y_val = data[:,train_split+day:val_split+day]
+    x_test = data[:,val_split:-day]
+    y_test = data[:,val_split+day:]
     
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
@@ -44,6 +44,7 @@ def load_data(filename, step):
     y_test = np.reshape(y_test, (y_test.shape[0], y_test.shape[1], 1))
 
     return [x_train, y_train, x_val, y_val, x_test, y_test, gt_test, max_data, min_data]
+
 
 #build the model
 def build_model(layers, freq, learning_rate):
