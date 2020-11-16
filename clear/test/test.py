@@ -29,7 +29,7 @@ if __name__=='__main__':
 	# n-step prediction
     parser.add_argument('-s','--step', type=int, default=1)
 	# data path
-    parser.add_argument('-d','--data_file', type=str, default='../dataset/crsp.npy')
+    parser.add_argument('-d','--data_file', type=str, default='../dataset/data.npy')
 	# visualization
     parser.add_argument('-v','--visualization', type=distutils.util.strtobool, default='false')
     args = parser.parse_args()
