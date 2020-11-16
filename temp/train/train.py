@@ -1,3 +1,5 @@
+import os
+os.environ['KERAS_BACKEND'] = 'theano'
 import build
 import time
 import matplotlib.pyplot as plt
@@ -6,11 +8,15 @@ import argparse
 import distutils.util
 import sys
 from keras.layers.core import Dense, Activation, Dropout 
-from keras.layers.recurrent import LSTM
-from keras.layers import Dense
+from keras.layers.recurrent import LSTM, GRU, SimpleRNN
+from keras.layers import Dense, Flatten, TimeDistributed
 from keras.models import Sequential
 from keras.layers import Input
+import os
+from keras import backend as K
 import keras
+
+
 np.set_printoptions(threshold=sys.maxsize)
 
 #Main Run Thread
@@ -33,24 +39,25 @@ if __name__=='__main__':
 	
     global_start_time = time.time()
 
-    print '> Loading data... '
-    
+    print ('> Loading data... ')
     data_file = args.data_file
     X_train, y_train, X_val, y_val, X_test, y_test, gt_test, max_data, min_data = build.load_data(data_file, step)
     train_len = X_train.shape[1]
     val_len = X_val.shape[1]
     test_len = X_test.shape[1]
 
-    print '> Data Loaded. Compiling...'
+    print ('> Data Loaded. Compiling...')
+    print(X_train.shape)
+    print(y_train.shape)
     #model = build.build_model([1, args.hidden_dim, 1], args.freq_dim, args.learning_rate)
     model = Sequential()
-    model.add(LSTM(output_dim = args.hidden_dim, input_shape = (2012, 1)))
-    model.add(Dense(output_dim = 1))
+    model.add(LSTM(output_dim = args.hidden_dim, input_shape = (None,1) , return_sequences=True))
+    model.add(TimeDistributed(Dense(1)))
     rms = keras.optimizers.RMSprop(lr=args.learning_rate) 
     model.compile(loss="mse", optimizer=rms)
     best_error = np.inf
     best_epoch = 0
-    print "hello"
+    print (model.summary())
     for ii in range(int(args.niter/args.nsnapshot)):
         model.fit(X_train, y_train, batch_size = 45, nb_epoch=args.nsnapshot, validation_split=0)
         
@@ -62,17 +69,17 @@ if __name__=='__main__':
         predicted = model.predict(X_train)
         train_error = np.sum((predicted[:,:,0] - y_train[:,:,0])**2) / (predicted.shape[0] * predicted.shape[1])
         
-        print num_iter, ' training error ', train_error
+        print (num_iter, ' training error ', train_error)
 
         predicted = model.predict(X_val)
         val_error = np.sum((predicted[:,:,0] - y_val[:,:,0])**2) / (val_len * predicted.shape[0])
         
-        print ' val error ', val_error
+        print (' val error ', val_error)
         
         if(val_error < best_error):
             best_error = val_error
             best_iter = args.nsnapshot * (ii+1)
     
-    print 'Training duration (s) : ', time.time() - global_start_time
-    print 'best iteration ', best_iter
-    print 'smallest error ', best_error
+    print ('Training duration (s) : ', time.time() - global_start_time)
+    print ('best iteration ', best_iter)
+    print ('smallest error ', best_error)

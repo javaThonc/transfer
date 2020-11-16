@@ -1,12 +1,14 @@
 import time
 import warnings
 import numpy as np
+import os 
+os.environ['KERAS_BACKEND'] = 'theano'
 import keras
 from numpy import newaxis
 from keras.layers.core import Dense, Activation, Dropout
-from keras.layers.recurrent import LSTM
-#from itosfm import ITOSFM
+from itosfm import ITOSFM
 from keras.models import Sequential
+
 warnings.filterwarnings("ignore")
 
 #Load data from data file, and split the data into training, validation and test set
@@ -15,7 +17,6 @@ def load_data(filename, step):
     day = step
     data = np.load(filename)
     data = data[:, :]
-    gt_test = data[:,day:]
     #data normalization
     max_data = np.max(data, axis = 1)
     min_data = np.min(data, axis = 1)
@@ -25,14 +26,15 @@ def load_data(filename, step):
     #dataset split
     train_split = int(round(0.8 * data.shape[1]))
     val_split = int(round(0.9 * data.shape[1]))
-    
+    test_split = int(round(0.1 * data.shape[1])) 
+    gt_test = data[:,-test_split:]
     x_train = data[:,:train_split]
     y_train = data[:,day:train_split+day]
-    x_val = data[:, train_split : val_split]
-    y_val = data[:, day + train_split : val_split+day]
-    x_test = data[:, val_split : -day]
-    y_test = data[:, val_split + day : ]
-    print (x_train.shape)
+    x_val = data[:,:val_split]
+    y_val = data[:,day:val_split+day]
+    x_test = data[:, -test_split - day:-day]
+    y_test = data[:, -test_split:]
+    
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
     x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
@@ -46,12 +48,18 @@ def load_data(filename, step):
 #build the model
 def build_model(layers, freq, learning_rate):
     model = Sequential()
-    model.add(LSTM(layers[1], input_shape = (2012,1))) 
+
+    model.add(ITOSFM(
+        input_dim=layers[0],
+        hidden_dim=layers[1],
+        output_dim=layers[2],
+        freq_dim = freq,
+        return_sequences=True))
 
     start = time.time()
-    print (model.summary()) 
+    
     rms = keras.optimizers.RMSprop(lr=learning_rate)
     model.compile(loss="mse", optimizer="rmsprop")
 
-    print ("Compilation Time : ", time.time() - start)
+    print "Compilation Time : ", time.time() - start
     return model
