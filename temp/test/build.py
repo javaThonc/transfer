@@ -11,29 +11,35 @@ from keras.models import Sequential
 
 warnings.filterwarnings("ignore")
 
-#Load data from data file, and split the data into training, validation and test set
-def load_data(filename, step):
-    #load data from the data file
-    day = step
-    data = np.load(filename)
-    data = data[:, :]
+def normalize(data):
     #data normalization
     max_data = np.max(data, axis = 1)
     min_data = np.min(data, axis = 1)
     max_data = np.reshape(max_data, (max_data.shape[0],1))
     min_data = np.reshape(min_data, (min_data.shape[0],1))
     data = (2 * data - (max_data + min_data)) / (max_data - min_data)
+    return data
+
+
+#Load data from data file, and split the data into training, validation and test set
+def load_data(filename, step):
+    #load data from the data file
+    day = step
+    data = np.load(filename)
+    data = data[:, :]
+
     #dataset split
     train_split = int(round(0.8 * data.shape[1]))
     val_split = int(round(0.9 * data.shape[1]))
     test_split = int(round(0.1 * data.shape[1])) 
-    gt_test = data[:,-test_split:]
-    x_train = data[:,:train_split]
-    y_train = data[:,day:train_split+day]
-    x_val = data[:,:val_split]
-    y_val = data[:,day:val_split+day]
-    x_test = data[:, -test_split - day:-day]
-    y_test = data[:, -test_split:]
+    
+    gt_test = normalize(data[:,-test_split:])
+    x_train = normalize(data[:,:train_split])
+    y_train = normalize(data[:,day:train_split+day])
+    x_val = normalize(data[:,:val_split])
+    y_val = normalize(data[:,day:val_split+day])
+    x_test = normalize(data[:, -test_split - day:-day])
+    y_test = normalize(data[:, -test_split:])
     
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
