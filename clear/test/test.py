@@ -1,5 +1,7 @@
 import build
 import time
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -22,6 +24,7 @@ def plot_results(predicted_data, true_data):
     plt.plot(predicted_data, label='Prediction')
     plt.legend()
     plt.show()
+    plt.savefig('agb.png')
 
 #Main Run Thread
 if __name__=='__main__':
@@ -61,12 +64,12 @@ if __name__=='__main__':
     model.add(TimeDistributed(Dense(1)))
     rms = keras.optimizers.RMSprop(lr=0.01) 
     model.compile(loss="mse", optimizer=rms)
-    #model = build.build_model([1, hidden_dim, 1], freq, 0.01)
+    model = build.build_model([1, hidden_dim, 1], freq, 0.01)
     print(model.summary())
 #loading model
 
     if step == 1:
-	    model_path = './snapshot/weights300.hdf5'
+	    model_path = './snapshot/weights1500.hdf5'
     elif step == 3:
 	    model_path = './snapshot/3d_50_10_17.00_0.00233.hdf5'
     elif step == 5:
@@ -77,11 +80,11 @@ if __name__=='__main__':
     model.load_weights(model_path)
     #predition
     print '> Predicting... '
-    predicted = model.predict(X_test)
+    prediction = model.predict(X_test)
     #denormalization   
-    prediction = (predicted[:,:, 0] * (max_data - min_data) + (max_data + min_data))/2
+    #prediction = (prediction[:,:,0] * (max_data - min_data) + (max_data + min_data))/2
 
-    error = np.sum((prediction[:,-test_len:] - gt_test[:,-test_len:])**2) / (test_len* prediction.shape[0])
+    error = np.sum((prediction[:,:,0] - gt_test[:,:])**2) / (prediction.shape[1]* prediction.shape[0])
     print 'The mean square error is: %f' % error
     
     if args.visualization:

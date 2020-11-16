@@ -35,8 +35,8 @@ def load_data(filename, step):
     min_data = np.reshape(min_data, (min_data.shape[0],1))
     data = (2 * data - (max_data + min_data)) / (max_data - min_data)
     #dataset split
-    train_split = round(0.8 * data.shape[1])
-    val_split = round(0.9 * data.shape[1])
+    train_split = int(round(0.8 * data.shape[1]))
+    val_split = int(round(0.9 * data.shape[1]))
     
     x_train = data[:,:train_split]
     y_train = data[:,day:train_split+day]
