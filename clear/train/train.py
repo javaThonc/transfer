@@ -44,7 +44,7 @@ if __name__=='__main__':
     model.add(TimeDistributed(Dense(1)))
     rms = keras.optimizers.RMSprop(lr=args.learning_rate) 
     model.compile(loss="mse", optimizer=rms)
-    # model = build.build_model([5, args.hidden_dim, 1], args.freq_dim, args.learning_rate)
+    model = build.build_model([5, args.hidden_dim, 1], args.freq_dim, args.learning_rate)
     print model.summary()
     best_error = np.inf
     best_epoch = 0
