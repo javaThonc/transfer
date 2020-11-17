@@ -32,7 +32,7 @@ if __name__=='__main__':
 	# n-step prediction
     parser.add_argument('-s','--step', type=int, default=1)
 	# data path
-    parser.add_argument('-d','--data_file', type=str, default='../dataset/data.npy')
+    parser.add_argument('-d','--data_file', type=str, default='../dataset/crsp.npy')
 	# visualization
     parser.add_argument('-v','--visualization', type=distutils.util.strtobool, default='false')
     args = parser.parse_args()
@@ -60,16 +60,16 @@ if __name__=='__main__':
     freq = 10
     
     model = Sequential()
-    model.add(LSTM(output_dim = hidden_dim, input_shape = (None,1) , return_sequences=True))
+    model.add(LSTM(output_dim = hidden_dim, input_shape = (None,5) , return_sequences=True))
     model.add(TimeDistributed(Dense(1)))
     rms = keras.optimizers.RMSprop(lr=0.01) 
     model.compile(loss="mse", optimizer=rms)
-    model = build.build_model([1, hidden_dim, 1], freq, 0.01)
+    model = build.build_model([5, hidden_dim, 1], freq, 0.01)
     print(model.summary())
 #loading model
 
     if step == 1:
-	    model_path = './snapshot/weights3000.hdf5'
+	    model_path = './snapshot/weights1000.hdf5'
     elif step == 3:
 	    model_path = './snapshot/3d_50_10_17.00_0.00233.hdf5'
     elif step == 5:
@@ -83,7 +83,7 @@ if __name__=='__main__':
     prediction = model.predict(X_test)
     #denormalization   
     prediction = (prediction[:,:,0] * (max_data - min_data) + (max_data + min_data))/2
-    error = np.sum((prediction[:,:] - gt_test[:,:])**2) / (prediction.shape[1]* prediction.shape[0])
+    error = np.sum((prediction[:,:,0] - gt_test[:,:,0])**2) / (prediction.shape[1]* prediction.shape[0])
     print 'The mean square error is: %f' % error 
     if args.visualization:
         for ii in range(0,len(prediction)):
