@@ -69,7 +69,7 @@ if __name__=='__main__':
 #loading model
 
     if step == 1:
-	    model_path = './snap_lstm/weights100.hdf5'
+	    model_path = './snap_lstm/weights1500.hdf5'
     elif step == 3:
 	    model_path = './snapshot/3d_50_10_17.00_0.00233.hdf5'
     elif step == 5:
@@ -82,6 +82,7 @@ if __name__=='__main__':
     print '> Predicting... '
     prediction = model.predict(X_test)
     #denormalization   
+    print prediction.shape
     prediction = (prediction[:,:,0] * (max_data[:,:,0] - min_data[:,:,0]) + (max_data[:,:,0] + min_data[:,:,0]))/2
     error = np.sum((prediction[:,:] - gt_test[:,:])**2) / (prediction.shape[1]* prediction.shape[0])
     print 'The mean square error is: %f' % error 
