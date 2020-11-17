@@ -44,7 +44,7 @@ if __name__=='__main__':
     
     data_file = args.data_file
     X_train, y_train, X_val, y_val, X_test, y_test, gt_test, max_data, min_data = build.load_data(data_file, step)
-    test_len = X_test.shape[1]-X_val.shape[1]
+    test_len = X_test.shape[1] - X_val.shape[1]
 
     print '> Data Loaded. Compiling...'
     #dimension of hidden states
@@ -69,7 +69,7 @@ if __name__=='__main__':
 #loading model
 
     if step == 1:
-	    model_path = './snapshot/weights1500.hdf5'
+	    model_path = './snapshot/weights1000.hdf5'
     elif step == 3:
 	    model_path = './snapshot/3d_50_10_17.00_0.00233.hdf5'
     elif step == 5:
@@ -82,11 +82,11 @@ if __name__=='__main__':
     print '> Predicting... '
     prediction = model.predict(X_test)
     #denormalization   
-    #prediction = (prediction[:,:,0] * (max_data - min_data) + (max_data + min_data))/2
-
-    error = np.sum((prediction[:,:,0] - gt_test[:,:])**2) / (prediction.shape[1]* prediction.shape[0])
-    print 'The mean square error is: %f' % error
-    
+    print max_data.shape
+    prediction = (prediction[:,:,0] * (max_data - min_data) + (max_data + min_data))/2
+    print prediction.shape
+    error = np.sum((prediction[:,-test_len:] - gt_test[:,-test_len:])**2) / (test_len* prediction.shape[0])
+    print 'The mean square error is: %f' % error 
     if args.visualization:
         for ii in range(0,len(prediction)):
             plot_results(prediction[ii, -test_len:], gt_test[ii, -test_len:])
