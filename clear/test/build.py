@@ -19,7 +19,7 @@ def load_data(filename, step):
     data = data[:, :]
     train_split = int(round(0.8 * data.shape[1]))
     val_split = int(round(0.9 * data.shape[1]))
-    gt_test = data[:,val_split+day:]
+    gt_test = data[:,val_split + day:]
     #data normalization
     max_data = np.max(data, axis = 1)
     min_data = np.min(data, axis = 1)
@@ -34,7 +34,7 @@ def load_data(filename, step):
     x_val = data[:,train_split:val_split]
     y_val = data[:,train_split+day:val_split+day]
     x_test = data[:,val_split:-day]
-    y_test = data[:,day+val_split:]
+    y_test = data[:,val_split + day:]
     
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
