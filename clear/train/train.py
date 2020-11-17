@@ -61,12 +61,12 @@ if __name__=='__main__':
         model.save_weights('./snap_separate/weights{}.hdf5'.format(num_iter), overwrite = True)
         
         predicted = model.predict(X_train)
-        train_error = np.sum((predicted[:,:,0] - y_train[:,:])**2) / (predicted.shape[0] * predicted.shape[1])
+        train_error = np.sum((predicted[:,:,0] - y_train[:,:,0])**2) / (predicted.shape[0] * predicted.shape[1])
         
         print num_iter, ' training error ', train_error
 
         predicted = model.predict(X_val)
-        val_error = np.sum((predicted[:,:,0] - y_val[:,:])**2) / (predicted.shape[1] * predicted.shape[0])
+        val_error = np.sum((predicted[:,:,0] - y_val[:,:,0])**2) / (predicted.shape[1] * predicted.shape[0])
         
         print ' val error ', val_error
         
