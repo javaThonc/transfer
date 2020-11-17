@@ -29,9 +29,8 @@ def load_data(filename, step):
     max_data = np.reshape(max_data[:,:], (max_data.shape[0],1, 6))
     min_data = np.reshape(min_data[:,:], (min_data.shape[0],1, 6))
     print max_data.shape
-    print ((2 * data[:,:] - (max_data + min_data)) / (max_data - min_data))
-    data_y = (2 * data[:,:] - (max_data + min_data)) / (max_data - min_data)[:,:,5]
-    data = (2 * data[:,:] - (max_data + min_data)) / (max_data - min_data)[:,:,:5]
+    data_y = ((2 * data[:,:] - (max_data + min_data)) / (max_data - min_data))[:,:,5]
+    data = ((2 * data[:,:] - (max_data + min_data)) / (max_data - min_data))[:,:,:5]
 
     #dataset split
    
