@@ -37,9 +37,6 @@ if __name__=='__main__':
     
     data_file = args.data_file
     X_train, y_train, X_val, y_val, X_test, y_test, gt_test, max_data, min_data = build.load_data(data_file, step)
-    train_len = X_train.shape[1]
-    val_len = X_val.shape[1] - train_len
-    test_len = X_test.shape[1] - val_len
 
     print '> Data Loaded. Compiling...'
     model = Sequential()
