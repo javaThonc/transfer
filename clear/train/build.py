@@ -36,18 +36,19 @@ def load_data(filename, step):
     x_test = data[:,val_split:-day,:]
     y_test = data[:,val_split + day:,:0]
     
-    print(x_train.shape)
-    print(y_train.shape)
-    print(x_val.shape)
-    print(y_val.shape)
 
     # x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     # x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
     # x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
 
-    # y_train = np.reshape(y_train, (y_train.shape[0], y_train.shape[1], 1))
-    # y_val = np.reshape(y_val, (y_val.shape[0], y_val.shape[1], 1))
-    # y_test = np.reshape(y_test, (y_test.shape[0], y_test.shape[1], 1))
+    y_train = np.reshape(y_train, (y_train.shape[0], y_train.shape[1], 1))
+    y_val = np.reshape(y_val, (y_val.shape[0], y_val.shape[1], 1))
+    y_test = np.reshape(y_test, (y_test.shape[0], y_test.shape[1], 1))
+    print(x_train.shape)
+    print(y_train.shape)
+    print(x_val.shape)
+    print(y_val.shape)
+
 
     return [x_train, y_train, x_val, y_val, x_test, y_test, gt_test, max_data, min_data]
 
