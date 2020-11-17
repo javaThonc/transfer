@@ -82,8 +82,9 @@ if __name__=='__main__':
     print '> Predicting... '
     prediction = model.predict(X_test)
     print prediction.shape
+    print max_data[:,:,0].shape
     #denormalization   
-    prediction = (prediction[:,:,0] * (max_data - min_data) + (max_data + min_data))/2
+    prediction = (prediction[:,:,0] * (max_data[:,:,0] - min_data[:,:,0]) + (max_data[:,:,0] + min_data[:,:,0]))/2
     error = np.sum((prediction[:,:,0] - gt_test[:,:,0])**2) / (prediction.shape[1]* prediction.shape[0])
     print 'The mean square error is: %f' % error 
     if args.visualization:
