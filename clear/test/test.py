@@ -69,7 +69,7 @@ if __name__=='__main__':
 #loading model
 
     if step == 1:
-	    model_path = './snap_lstm/weights2000.hdf5'
+	    model_path = './snap_lstm/weights2500.hdf5'
     elif step == 3:
 	    model_path = './snapshot/3d_50_10_17.00_0.00233.hdf5'
     elif step == 5:
