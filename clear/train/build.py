@@ -16,7 +16,6 @@ def load_data(filename, step):
     #load data from the data file
     day = step
     data = np.load(filename)
-    print data.shape
     data = data[:, :,]
     train_split = int(round(0.8 * data.shape[1]))
     val_split = int(round(0.9 * data.shape[1]))
@@ -44,6 +43,7 @@ def load_data(filename, step):
     print(y_train.shape)
     print(x_val.shape)
     print(y_val.shape)
+    print y_test.shape
 
     # x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     # x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
