@@ -1,4 +1,4 @@
-import time
+ import time
 import warnings
 import numpy as np
 import os 
@@ -27,7 +27,7 @@ def load_data(filename, step):
 
     max_data = np.reshape(max_data[:,:], (max_data.shape[0],1, 6))
     min_data = np.reshape(min_data[:,:], (min_data.shape[0],1, 6))
-    data_y = ((2 * data[:,:] - (max_data + min_data)) / (max_data - min_data))[:,:,5]
+    data_y = data[:,:,5]
     data = ((2 * data[:,:] - (max_data + min_data)) / (max_data - min_data))[:,:,:5]
 
     #dataset split
