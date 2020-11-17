@@ -69,7 +69,7 @@ if __name__=='__main__':
         print num_iter, ' training error ', train_error
 
         predicted = model.predict(X_val)
-        val_error = np.sum((predicted[:,-val_len:,0] - y_val[:,-val_len:,0])**2) / (val_len * predicted.shape[0])
+        val_error = np.sum((predicted[:,:,0] - y_val[:,:,0])**2) / (predicted.shape[1] * predicted.shape[0])
         
         print ' val error ', val_error
         

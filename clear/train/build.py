@@ -30,8 +30,8 @@ def load_data(filename, step):
     gt_test = data[:,day:]
     x_train = data[:,:train_split]
     y_train = data[:,day:train_split+day]
-    x_val = data[:,:val_split]
-    y_val = data[:,day:val_split+day]
+    x_val = data[:,train_split:val_split]
+    y_val = data[:,day+train_split:val_split+day]
     x_test = data[:,:-day]
     y_test = data[:,day:]
     
