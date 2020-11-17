@@ -60,7 +60,7 @@ def build_model(layers, freq, learning_rate):
     start = time.time()
     
     rms = keras.optimizers.RMSprop(lr=learning_rate)
-    model.compile(loss="mse", optimizer=rms)
+    model.compile(loss="mse", optimizer='rmsprop')
 
     print "Compilation Time : ", time.time() - start
     return model
