@@ -16,26 +16,29 @@ def load_data(filename, step):
     #load data from the data file
     day = step
     data = np.load(filename)
-    data = data[:, :, ]
+    data = data[:, :,]
     train_split = int(round(0.8 * data.shape[1]))
     val_split = int(round(0.9 * data.shape[1]))
-    gt_test = data[:,val_split + day:,0]
+    gt_test = data[:,val_split + day:,5]
     #data normalization
+
     max_data = np.max(data, axis = 1)
     min_data = np.min(data, axis = 1)
-    max_data = np.reshape(max_data, (max_data.shape[0],1, 5))
-    min_data = np.reshape(min_data, (min_data.shape[0],1, 5))
-    data = (2 * data - (max_data + min_data)) / (max_data - min_data)
+
+    max_data = np.reshape(max_data[:,:], (max_data.shape[0],1, 6))
+    min_data = np.reshape(min_data[:,:], (min_data.shape[0],1, 6))
+    data_y = ((2 * data[:,:] - (max_data + min_data)) / (max_data - min_data))[:,:,5]
+    data = ((2 * data[:,:] - (max_data + min_data)) / (max_data - min_data))[:,:,:5]
+
     #dataset split
    
 
-    x_train = data[:,:train_split,:]
-    y_train = data[:,day:train_split+day,0]
-    x_val = data[:,train_split:val_split,:]
-    y_val = data[:,train_split+day:val_split+day,0]
+    x_train = data[:,:train_split]
+    y_train = data_y[:,day:train_split+day]
+    x_val = data[:,train_split:val_split]
+    y_val = data_y[:,train_split+day:val_split+day]
     x_test = data[:,val_split:-day,:]
-    y_test = data[:,val_split + day:,0]
-    
+    y_test = data_y[:,val_split + day:]
 
     # x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     # x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
