@@ -44,7 +44,7 @@ if __name__=='__main__':
     model.add(TimeDistributed(Dense(1)))
     rms = keras.optimizers.RMSprop(lr=args.learning_rate) 
     model.compile(loss="mse", optimizer=rms)
-    model = build.build_model([5, args.hidden_dim, 1], args.freq_dim, args.learning_rate)
+    # model = build.build_model([5, args.hidden_dim, 1], args.freq_dim, args.learning_rate)
     print model.summary()
     best_error = np.inf
     best_epoch = 0
@@ -58,7 +58,7 @@ if __name__=='__main__':
             validation_split=0)
         
         num_iter = str(args.nsnapshot * (ii+1))
-        model.save_weights('./snap_sfm_return/weights{}.hdf5'.format(num_iter), overwrite = True)
+        model.save_weights('./snap_lstm_return/weights{}.hdf5'.format(num_iter), overwrite = True)
         
         predicted = model.predict(X_train)
         train_error = np.sum((predicted[:,:,0] - y_train[:,:,0])**2) / (predicted.shape[0] * predicted.shape[1])
