@@ -22,6 +22,8 @@ def load_data(filename, step):
     val_split = int(round(0.9 * data.shape[1]))
     gt_test = data[:,val_split + day:,5]
     #data normalization
+    print max_data.shape
+    print max_data[:,:,:5].shape
     max_data = np.max(data, axis = 1)
     min_data = np.min(data, axis = 1)
     max_data = np.reshape(max_data[:,:,:5], (max_data.shape[0],1, 5))
