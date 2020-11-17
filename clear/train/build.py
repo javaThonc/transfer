@@ -38,12 +38,11 @@ def load_data(filename, step):
     x_val = data[:,train_split:val_split]
     y_val = data_y[:,train_split+day:val_split+day]
     x_test = data[:,val_split:-day,:]
-    y_test = data_y[:,val_split + day]
+    y_test = data_y[:,val_split + day:]
     print(x_train.shape)
     print(y_train.shape)
     print(x_val.shape)
     print(y_val.shape)
-    print y_test.shape
 
     # x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
     # x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
