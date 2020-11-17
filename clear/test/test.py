@@ -64,12 +64,12 @@ if __name__=='__main__':
     model.add(TimeDistributed(Dense(1)))
     rms = keras.optimizers.RMSprop(lr=0.01) 
     model.compile(loss="mse", optimizer=rms)
-    # model = build.build_model([5, hidden_dim, 1], freq, 0.01)
+    model = build.build_model([5, hidden_dim, 1], freq, 0.01)
     print(model.summary())
 #loading model
 
     if step == 1:
-	    model_path = './snap_separate/weights2000.hdf5'
+	    model_path = './snap_separate/weights3000.hdf5'
     elif step == 3:
 	    model_path = './snapshot/3d_50_10_17.00_0.00233.hdf5'
     elif step == 5:
