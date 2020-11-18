@@ -152,38 +152,40 @@ class LSTM(nn.Module):
         return self.fc_out(out[:, -1, :]).squeeze()
 
 class SFM(nn.Module):
-    def __init__(self, d_feat=6, output_dim = 1, freq_dim = 10, hidden_size = 64, dropout_W = 0.0, dropout_U = 0.0):
+    def __init__(self, d_feat=6, output_dim = 1, freq_dim = 10, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
         super().__init__()
         self.input_dim  = d_feat
         self.output_dim = output_dim
         self.freq_dim = freq_dim
         self.hidden_dim = hidden_size
 
-        self.W_i = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
+        print(self.hidden_dim)
+        print(hidden_size)
+        self.W_i = init.xavier_uniform_(torch.empty((self.input_dim, self.hidden_dim)))
         self.U_i = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
-        self.b_i = init.zeros(self.hidden_dim)
+        self.b_i = torch.zeros(self.hidden_dim)
 
         self.W_ste = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
         self.U_ste = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
-        self.b_ste = init.ones(self.hidden_dim)
+        self.b_ste = torch.ones(self.hidden_dim)
 
         self.W_fre = init.xavier_uniform_(torch.empty(self.input_dim, self.freq_dim))
         self.U_fre = init.orthogonal_(torch.empty(self.hidden_dim, self.freq_dim))
-        self.b_fre = init.ones(self.freq_dim)
+        self.b_fre = torch.ones(self.freq_dim)
 
         self.W_c = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
         self.U_c = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
-        self.b_c = init.zeros(self.hidden_dim)
+        self.b_c = torch.zeros(self.hidden_dim)
 
         self.W_o = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
         self.U_o = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
-        self.b_o = init.zeros(self.hidden_dim)
+        self.b_o = torch.zeros(self.hidden_dim)
 
         self.U_a = init.orthogonal_(torch.empty(self.freq_dim, 1))
-        self.b_a = init.zeros(self.hidden_dim)
+        self.b_a = torch.zeros(self.hidden_dim)
 
         self.W_p = init.xavier_uniform_(torch.empty(self.hidden_dim, self.output_dim))
-        self.b_p = init.zeros(self.output_dim)
+        self.b_p = torch.zeros(self.output_dim)
 
         self.trainable_weights = [self.W_i, self.U_i, self.b_i,
                                     self.W_c, self.U_c, self.b_c,
@@ -509,7 +511,7 @@ def main(args):
 
     pprint('create model...')
     device = 'cuda:%d'%(args.cuda) if torch.cuda.is_available() else 'cpu'
-    model = get_model(args.model_name)(args.d_feat, args.hidden_size, args.num_layers, args.dropout)
+    model = get_model(args.model_name)(d_feat = args.d_feat, hidden_size = args.hidden_size, num_layers = args.num_layers, dropout_W = args.dropout, dropout_U = args.dropout)
     model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
