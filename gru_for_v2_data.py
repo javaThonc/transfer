@@ -217,7 +217,7 @@ class SFM(nn.Module):
     
     def forward(self, x):
         if(len(self.states)==0): #hasn't initialized yet
-            init_states(x)
+            self.init_states(x)
         get_constants(x)
         p_tm1 = states[0]
         h_tm1 = states[1]
