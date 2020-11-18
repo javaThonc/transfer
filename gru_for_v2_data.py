@@ -198,12 +198,12 @@ class SFM(nn.Module):
         reducer_s = torch.zeros((self.input_dim, self.hidden_dim))
         reducer_f = torch.zeros((self.hidden_dim, self.freq_dim))
         reducer_p = torch.zeros((self.hidden_dim, self.output_dim))
-        init_state_h = torch.dot(init_state_h, reducer_s)
+        init_state_h = torch.mm(init_state_h, reducer_s)
 
-        init_state_p = torch.dot(init_state_h, reducer_p)
+        init_state_p = torch.mm(init_state_h, reducer_p)
         
         init_state = torch.zeros_like(init_state_h)
-        init_freq = torch.dot(init_state_h, reducer_f)
+        init_freq = torch.mm(init_state_h, reducer_f)
 
         init_state = torch.reshape(init_state, (-1, self.hidden_dim, 1))
         init_freq = torch.reshape(init_freq, (-1, 1, self.freq_dim))
@@ -228,22 +228,22 @@ class SFM(nn.Module):
         B_W = states[6]
         frequency = states[7]
 
-        x_i = torch.dot(x * B_W[0], self.W_i) + self.b_i
-        x_ste = torch.dot(x * B_W[0], self.W_ste) + self.b_ste
-        x_fre = torch.dot(x * B_W[0], self.W_fre) + self.b_fre
-        x_c = torch.dot(x * B_W[0], self.W_c) + self.b_c
-        x_o = torch.dot(x * B_W[0], self.W_o) + self.b_o
+        x_i = torch.mm(x * B_W[0], self.W_i) + self.b_i
+        x_ste = torch.mm(x * B_W[0], self.W_ste) + self.b_ste
+        x_fre = torch.mm(x * B_W[0], self.W_fre) + self.b_fre
+        x_c = torch.mm(x * B_W[0], self.W_c) + self.b_c
+        x_o = torch.mm(x * B_W[0], self.W_o) + self.b_o
         
-        i = self.inner_activation(x_i + torch.dot(h_tm1 * B_U[0], self.U_i))
+        i = self.inner_activation(x_i + torch.mm(h_tm1 * B_U[0], self.U_i))
         
-        ste = self.inner_activation(x_ste + torch.dot(h_tm1 * B_U[0], self.U_ste))
-        fre = self.inner_activation(x_fre + torch.dot(h_tm1 * B_U[0], self.U_fre))
+        ste = self.inner_activation(x_ste + torch.mm(h_tm1 * B_U[0], self.U_ste))
+        fre = self.inner_activation(x_fre + torch.mm(h_tm1 * B_U[0], self.U_fre))
 
         ste = torch.reshape(ste, (-1, self.hidden_dim, 1))
         fre = torch.reshape(fre, (-1, 1, self.freq_dim))
         f = ste * fre
         
-        c = i * self.activation(x_c + torch.dot(h_tm1 * B_U[0], self.U_c))
+        c = i * self.activation(x_c + torch.mm(h_tm1 * B_U[0], self.U_c))
 
         time = time_tm1 + 1
 
@@ -259,14 +259,14 @@ class SFM(nn.Module):
         A = torch.square(S_re) + torch.square(S_im)
 
         A = torch.reshape(A, (-1, self.freq_dim))
-        A_a = torch.dot(A * B_U[0], self.U_a)
+        A_a = torch.mm(A * B_U[0], self.U_a)
         A_a = torch.reshape(A_a, (-1, self.hidden_dim))
         a = self.activation(A_a + self.b_a)
         
-        o = self.inner_activation(x_o + torch.dot(h_tm1 * B_U[0], self.U_o))
+        o = self.inner_activation(x_o + torch.mm(h_tm1 * B_U[0], self.U_o))
 
         h = o * a
-        p = torch.dot(h, self.W_p) + self.b_p
+        p = torch.mm(h, self.W_p) + self.b_p
 
 
         self.states = [p, h, S_re, S_im, time, None, None, None]
