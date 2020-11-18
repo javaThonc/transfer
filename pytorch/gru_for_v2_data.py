@@ -151,6 +151,142 @@ class LSTM(nn.Module):
         out, _ = self.rnn(x)
         return self.fc_out(out[:, -1, :]).squeeze()
 
+class SFM(nn.Module):
+    def __init__(self, d_feat=6, output_dim - 1, freq_dim = 10, hidden_size = 64, dropout_W = 0.0, dropout_U = 0.0):
+        super().__init__():
+        self.input_dim  = d_feat
+        self.output_dim = output_dim
+        self.freq_dim = freq_dim
+        self.hidden_dim = hidden_size
+
+        self.W_i = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
+        self.U_i = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
+        self.b_i = init.zeros(self.hidden_dim)
+
+        self.W_ste = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
+        self.U_ste = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
+        self.b_ste = init.ones(self.hidden_dim)
+
+        self.W_fre = init.xavier_uniform_(torch.empty(self.input_dim, self.freq_dim))
+        self.U_fre = init.orthogonal_(torch.empty(self.hidden_dim, self.freq_dim))
+        self.b_fre = init.ones(self.freq_dim)
+
+        self.W_c = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
+        self.U_c = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
+        self.b_c = init.zeros(self.hidden_dim)
+
+        self.W_o = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
+        self.U_o = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
+        self.b_o = init.zeros(self.hidden_dim)
+
+        self.U_a = init.orthogonal_(torch.empty(self.freq_dim, 1))
+        self.b_a = init.zeros(self.hidden_dim)
+
+        self.W_p = init.xavier_uniform_(torch.empty(self.hidden_dim, self.output_dim))
+        self.b_p = init.zeros(self.output_dim)
+
+        self.trainable_weights = [self.W_i, self.U_i, self.b_i,
+                                    self.W_c, self.U_c, self.b_c,
+                                    self.W_ste, self.U_ste, self.b_ste,
+                                    self.W_fre, self.U_fre, self.b_fre,
+                                    self.W_o, self.U_o, self.b_o,
+                                    self.U_a, self.b_a,
+                                    self.W_p, self.b_p]
+
+        self.activation = nn.Tanh()
+        self.inner_activation = nn.Hardsigmoid()
+        self.dropout_W, self.dropout_U = (dropout_W, dropout_U):
+        self.states = []
+
+    def init_states(self, x):
+        init_state_h = torch.zeros_like(x)
+        init_state_h = torch.sum(init_state_h, axis=1)
+        reducer_s = torch.zeros((self.input_dim, self.hidden_dim))
+        reducer_f = torch.zeros((self.hidden_dim, self.freq_dim))
+        reducer_p = torch.zeros((self.hidden_dim, self.output_dim))
+        init_state_h = torch.dot(init_state_h, reducer_s)
+
+        init_state_p = torch.dot(init_state_h, reducer_p)
+        
+        init_state = torch.zeros_like(init_state_h)
+        init_freq = torch.dot(init_state_h, reducer_f)
+
+        init_state = torch.reshape(init_state, (-1, self.hidden_dim, 1))
+        init_freq = torch.reshape(init_freq, (-1, 1, self.freq_dim))
+        
+        init_state_S_re = init_state * init_freq
+        init_state_S_im = init_state * init_freq
+        
+        init_state_time = torch.tensor(0.)
+
+        self.states = [init_state_p, init_state_h, init_state_S_re, init_state_S_im, init_state_time, None, None, None]
+    
+    def forward(self, x):
+        if(len(self.states)==0): #hasn't initialized yet
+            init_states(x)
+        get_constants(x)
+        p_tm1 = states[0]
+        h_tm1 = states[1]
+        S_re_tm1 = states[2]
+        S_im_tm1 = states[3]
+        time_tm1 = states[4]
+        B_U = states[5]
+        B_W = states[6]
+        frequency = states[7]
+
+        x_i = torch.dot(x * B_W[0], self.W_i) + self.b_i
+        x_ste = torch.dot(x * B_W[0], self.W_ste) + self.b_ste
+        x_fre = torch.dot(x * B_W[0], self.W_fre) + self.b_fre
+        x_c = torch.dot(x * B_W[0], self.W_c) + self.b_c
+        x_o = torch.dot(x * B_W[0], self.W_o) + self.b_o
+        
+        i = self.inner_activation(x_i + torch.dot(h_tm1 * B_U[0], self.U_i))
+        
+        ste = self.inner_activation(x_ste + torch.dot(h_tm1 * B_U[0], self.U_ste))
+        fre = self.inner_activation(x_fre + torch.dot(h_tm1 * B_U[0], self.U_fre))
+
+        ste = torch.reshape(ste, (-1, self.hidden_dim, 1))
+        fre = torch.reshape(fre, (-1, 1, self.freq_dim))
+        f = ste * fre
+        
+        c = i * self.activation(x_c + torch.dot(h_tm1 * B_U[0], self.U_c))
+
+        time = time_tm1 + 1
+
+        omega = torch.tensor(2*np.pi)* time * frequency
+        re = torch.cos(omega)
+        im = torch.sin(omega)
+        
+        c = torch.reshape(c, (-1, self.hidden_dim, 1))
+        
+        S_re = f * S_re_tm1 + c * re
+        S_im = f * S_im_tm1 + c * im
+        
+        A = torch.square(S_re) + torch.square(S_im)
+
+        A = torch.reshape(A, (-1, self.freq_dim))
+        A_a = torch.dot(A * B_U[0], self.U_a)
+        A_a = torch.reshape(A_a, (-1, self.hidden_dim))
+        a = self.activation(A_a + self.b_a)
+        
+        o = self.inner_activation(x_o + torch.dot(h_tm1 * B_U[0], self.U_o))
+
+        h = o * a
+        p = torch.dot(h, self.W_p) + self.b_p
+
+
+        self.states = [p, h, S_re, S_im, time, None, None, None]
+
+        return p
+
+    def get_constants(self, x):
+        constants.append([torch.tensor(1.) for _ in range(6)])
+        constants.append([torch.tensor(1.) for _ in range(7)])
+        array = np.array([float(ii)/self.freq_dim for ii in range(self.freq_dim)])
+        constants.append([torch.tensor(array)])
+
+        self.states[5:] = constants
+
 def get_model(model_name):
 
     if model_name.upper() == 'LSTM':
