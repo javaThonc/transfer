@@ -161,40 +161,32 @@ class SFM(nn.Module):
 
         print(self.hidden_dim)
         print(hidden_size)
-        self.W_i = init.xavier_uniform_(torch.empty((self.input_dim, self.hidden_dim)))
-        self.U_i = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
-        self.b_i = torch.zeros(self.hidden_dim)
+        self.W_i = nn.Parameter(init.xavier_uniform_(torch.empty((self.input_dim, self.hidden_dim))))
+        self.U_i = nn.Parameter(init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim)))
+        self.b_i = nn.Parameter(torch.zeros(self.hidden_dim))
 
-        self.W_ste = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
-        self.U_ste = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
-        self.b_ste = torch.ones(self.hidden_dim)
+        self.W_ste = nn.Parameter(init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim)))
+        self.U_ste = nn.Parameter(init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim)))
+        self.b_ste = nn.Parameter(torch.ones(self.hidden_dim))
 
-        self.W_fre = init.xavier_uniform_(torch.empty(self.input_dim, self.freq_dim))
-        self.U_fre = init.orthogonal_(torch.empty(self.hidden_dim, self.freq_dim))
-        self.b_fre = torch.ones(self.freq_dim)
+        self.W_fre = nn.Parameter(init.xavier_uniform_(torch.empty(self.input_dim, self.freq_dim)))
+        self.U_fre = nn.Parameter(init.orthogonal_(torch.empty(self.hidden_dim, self.freq_dim)))
+        self.b_fre = nn.Parameter(torch.ones(self.freq_dim))
 
-        self.W_c = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
-        self.U_c = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
-        self.b_c = torch.zeros(self.hidden_dim)
+        self.W_c = nn.Parameter(init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim)))
+        self.U_c = nn.Parameter(init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim)))
+        self.b_c = nn.Parameter(torch.zeros(self.hidden_dim))
 
-        self.W_o = init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim))
-        self.U_o = init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim))
-        self.b_o = torch.zeros(self.hidden_dim)
+        self.W_o = nn.Parameter(init.xavier_uniform_(torch.empty(self.input_dim, self.hidden_dim)))
+        self.U_o = nn.Parameter(init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim)))
+        self.b_o = nn.Parameter(torch.zeros(self.hidden_dim))
 
-        self.U_a = init.orthogonal_(torch.empty(self.freq_dim, 1))
-        self.b_a = torch.zeros(self.hidden_dim)
+        self.U_a = nn.Parameter(init.orthogonal_(torch.empty(self.freq_dim, 1)))
+        self.b_a = nn.Parameter(torch.zeros(self.hidden_dim))
 
-        self.W_p = init.xavier_uniform_(torch.empty(self.hidden_dim, self.output_dim))
-        self.b_p = torch.zeros(self.output_dim)
-
-        self.trainable_weights = [self.W_i, self.U_i, self.b_i,
-                                    self.W_c, self.U_c, self.b_c,
-                                    self.W_ste, self.U_ste, self.b_ste,
-                                    self.W_fre, self.U_fre, self.b_fre,
-                                    self.W_o, self.U_o, self.b_o,
-                                    self.U_a, self.b_a,
-                                    self.W_p, self.b_p]
-
+        self.W_p = nn.Parameter(init.xavier_uniform_(torch.empty(self.hidden_dim, self.output_dim)))
+        self.b_p = nn.Parameter(torch.zeros(self.output_dim))
+        
         self.activation = nn.Tanh()
         self.inner_activation = nn.Hardsigmoid()
         self.dropout_W, self.dropout_U = (dropout_W, dropout_U)
