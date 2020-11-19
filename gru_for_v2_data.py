@@ -192,8 +192,7 @@ class SFM(nn.Module):
         self.states = []
 
     def init_states(self, x):
-        x = x.reshape(len(x), self.input_dim, -1) # [N, F, T] # why not x.reshape(len(x), -1, input_dim)
-        x = x.permute(0, 2, 1) # [N, T, F]
+
         init_state_h = torch.zeros_like(x)
         init_state_h = torch.sum(init_state_h, axis=1)
         reducer_s = torch.zeros((self.input_dim, self.hidden_dim))
@@ -217,6 +216,8 @@ class SFM(nn.Module):
         self.states = [init_state_p, init_state_h, init_state_S_re, init_state_S_im, init_state_time, None, None, None]
     
     def forward(self, x):
+        x = x.reshape(len(x), self.input_dim, -1) # [N, F, T] # why not x.reshape(len(x), -1, input_dim)
+        x = x.permute(0, 2, 1) # [N, T, F]
         if(len(self.states)==0): #hasn't initialized yet
             self.init_states(x)
         self.get_constants(x)
@@ -275,6 +276,7 @@ class SFM(nn.Module):
         return p
 
     def get_constants(self, x):
+        constants = []
         constants.append([torch.tensor(1.) for _ in range(6)])
         constants.append([torch.tensor(1.) for _ in range(7)])
         array = np.array([float(ii)/self.freq_dim for ii in range(self.freq_dim)])
