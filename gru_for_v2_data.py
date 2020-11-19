@@ -250,7 +250,9 @@ class SFM(nn.Module):
         c = i * self.activation(x_c + torch.matmul(h_tm1 * B_U[0], self.U_c).unsqueeze(1))
 
         time = time_tm1 + 1
-
+        print(frequency)
+        print(time)
+        print(torch.tensor(2 * np.pi))
         omega = torch.tensor(2 * np.pi) * time * frequency
 
         re = torch.cos(omega) 
