@@ -236,10 +236,8 @@ class SFM(nn.Module):
         x_c = torch.matmul(x * B_W[0], self.W_c) + self.b_c
         x_o = torch.matmul(x * B_W[0], self.W_o) + self.b_o
         
-        print(torch.matmul(h_tm1 * B_U[0], self.U_i).shape)
-        print(x_i.shape)
 
-        i = self.inner_activation(x_i + torch.matmul(h_tm1 * B_U[0], self.U_i))
+        i = self.inner_activation(x_i + torch.matmul(h_tm1 * B_U[0], self.U_i).unsquuze(1)) # not sure whether I am doing in the right unsquuze
         
         ste = self.inner_activation(x_ste + torch.matmul(h_tm1 * B_U[0], self.U_ste))
         fre = self.inner_activation(x_fre + torch.matmul(h_tm1 * B_U[0], self.U_fre))
