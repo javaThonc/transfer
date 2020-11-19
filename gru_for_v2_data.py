@@ -193,6 +193,7 @@ class SFM(nn.Module):
         self.states = []
 
     def init_states(self, x):
+        print(x.shape)
         init_state_h = torch.zeros_like(x)
         init_state_h = torch.sum(init_state_h, axis=1)
         reducer_s = torch.zeros((self.input_dim, self.hidden_dim))
