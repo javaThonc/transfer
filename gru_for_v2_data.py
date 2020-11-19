@@ -237,6 +237,7 @@ class SFM(nn.Module):
         x_o = torch.matmul(x * B_W[0], self.W_o) + self.b_o
         
         print(torch.matmul(h_tm1 * B_U[0], self.U_i).shape)
+        print(x_i.shape)
 
         i = self.inner_activation(x_i + torch.matmul(h_tm1 * B_U[0], self.U_i))
         
