@@ -154,7 +154,7 @@ class LSTM(nn.Module):
 class SFM(nn.Module):
     def __init__(self, d_feat=6, output_dim = 1, freq_dim = 10, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
         super().__init__()
-        self.input_dim  = d_feat
+        self.v  = d_feat
         self.output_dim = output_dim
         self.freq_dim = freq_dim
         self.hidden_dim = hidden_size
@@ -193,7 +193,7 @@ class SFM(nn.Module):
         self.states = []
 
     def init_states(self, x):
-        x = x.reshape(len(x), self.d_feat, -1) # [N, F, T]
+        x = x.reshape(len(x), self.input_dim, -1) # [N, F, T] # why not x.reshape(len(x), -1, input_dim)
         x = x.permute(0, 2, 1) # [N, T, F]
         init_state_h = torch.zeros_like(x)
         init_state_h = torch.sum(init_state_h, axis=1)
