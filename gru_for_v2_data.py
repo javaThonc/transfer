@@ -242,20 +242,16 @@ class SFM(nn.Module):
         ste = self.inner_activation(x_ste + torch.matmul(h_tm1 * B_U[0], self.U_ste).unsqueeze(1))
         fre = self.inner_activation(x_fre + torch.matmul(h_tm1 * B_U[0], self.U_fre).unsqueeze(1))
 
-        # print(ste.shape)
-        # print(fre.shape)
-
         ste = torch.reshape(ste, (-1, self.hidden_dim, 1))
         fre = torch.reshape(fre, (-1, 1, self.freq_dim))
         
         f = ste * fre
-        # print(f.shape)
         
         c = i * self.activation(x_c + torch.matmul(h_tm1 * B_U[0], self.U_c).unsqueeze(1))
 
         time = time_tm1 + 1
 
-        omega = torch.tensor(2*np.pi* time * frequency) 
+        omega = 2 * np.pi * time * frequency
         re = torch.cos(omega) 
         im = torch.sin(omega)
         
