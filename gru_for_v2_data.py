@@ -255,7 +255,7 @@ class SFM(nn.Module):
 
         time = time_tm1 + 1
 
-        omega = torch.tensor(2*np.pi) * time * frequency
+        omega = torch.tensor(2*np.pi* time * frequency) 
         re = torch.cos(omega) 
         im = torch.sin(omega)
         
