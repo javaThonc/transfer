@@ -215,68 +215,80 @@ class SFM(nn.Module):
 
         self.states = [init_state_p, init_state_h, init_state_S_re, init_state_S_im, init_state_time, None, None, None]
     
-    def forward(self, x):
-        x = x.reshape(len(x), self.input_dim, -1) # [N, F, T] # why not x.reshape(len(x), -1, input_dim)
-        x = x.permute(0, 2, 1) # [N, T, F]
-        if(len(self.states)==0): #hasn't initialized yet
-            self.init_states(x)
-        self.get_constants(x)
-        p_tm1 = self.states[0]
-        h_tm1 = self.states[1]
-        S_re_tm1 = self.states[2]
-        S_im_tm1 = self.states[3]
-        time_tm1 = self.states[4]
-        B_U = self.states[5]
-        B_W = self.states[6]
-        frequency = self.states[7]
+    def forward(self, input):
+        """
+        x - >[800,60,64]
+        x_i - >[800, 60, hidden]
+        x_sre - >[800, 60, hidden]
+        x_fre - >[800, 60, freq]
+        x_c - >[800, 60, hidden]
+        x_o - >[800, 60, hidden]
 
-        x_i = torch.matmul(x * B_W[0], self.W_i) + self.b_i
-        x_ste = torch.matmul(x * B_W[0], self.W_ste) + self.b_ste
-        x_fre = torch.matmul(x * B_W[0], self.W_fre) + self.b_fre
-        x_c = torch.matmul(x * B_W[0], self.W_c) + self.b_c
-        x_o = torch.matmul(x * B_W[0], self.W_o) + self.b_o
-        
-        i = self.inner_activation(x_i + torch.matmul(h_tm1 * B_U[0], self.U_i).unsqueeze(1)) # not sure whether I am doing in the right unsquuze
-        
+        html -> [800, 1, hidden]
+        i -> [800, 60, hidden]
+        """
+        input = input.reshape(len(input), self.input_dim, -1) # [N, F, T] # why not x.reshape(len(x), -1, input_dim)
+        input = input.permute(0, 2, 1) # [N, T, F]
+        time_step = input.shape[1]
+        for ts in time_step:
+            x = input[:, ts,:]
+            if(len(self.states)==0): #hasn't initialized yet
+                self.init_states(x)
+            self.get_constants(x)
+            p_tm1 = self.states[0]
+            h_tm1 = self.states[1]
+            S_re_tm1 = self.states[2]
+            S_im_tm1 = self.states[3]
+            time_tm1 = self.states[4]
+            B_U = self.states[5]
+            B_W = self.states[6]
+            frequency = self.states[7]
 
-        ste = self.inner_activation(x_ste + torch.matmul(h_tm1 * B_U[0], self.U_ste).unsqueeze(1))
-        fre = self.inner_activation(x_fre + torch.matmul(h_tm1 * B_U[0], self.U_fre).unsqueeze(1))
+            x_i = torch.matmul(x * B_W[0], self.W_i) + self.b_i
+            x_ste = torch.matmul(x * B_W[0], self.W_ste) + self.b_ste
+            x_fre = torch.matmul(x * B_W[0], self.W_fre) + self.b_fre
+            x_c = torch.matmul(x * B_W[0], self.W_c) + self.b_c
+            x_o = torch.matmul(x * B_W[0], self.W_o) + self.b_o
+            
+            i = self.inner_activation(x_i + torch.matmul(h_tm1 * B_U[0], self.U_i).unsqueeze(1)) # not sure whether I am doing in the right unsquuze
+            
 
-        ste = torch.reshape(ste, (-1, self.hidden_dim, 1))
-        fre = torch.reshape(fre, (-1, 1, self.freq_dim))
-        
-        f = ste * fre
-        
-        c = i * self.activation(x_c + torch.matmul(h_tm1 * B_U[0], self.U_c).unsqueeze(1))
+            ste = self.inner_activation(x_ste + torch.matmul(h_tm1 * B_U[0], self.U_ste).unsqueeze(1))
+            fre = self.inner_activation(x_fre + torch.matmul(h_tm1 * B_U[0], self.U_fre).unsqueeze(1))
 
-        time = time_tm1 + 1
-        print(frequency)
-        print(time)
-        print(torch.tensor(2 * np.pi))
-        omega = torch.tensor(2 * np.pi) * time * frequency
+            ste = torch.reshape(ste, (-1, self.hidden_dim, 1))
+            fre = torch.reshape(fre, (-1, 1, self.freq_dim))
+            
+            f = ste * fre
+            
+            c = i * self.activation(x_c + torch.matmul(h_tm1 * B_U[0], self.U_c).unsqueeze(1))
 
-        re = torch.cos(omega) 
-        im = torch.sin(omega)
-        
-        c = torch.reshape(c, (-1, self.hidden_dim, 1))
-        
-        S_re = f * S_re_tm1 + c * re
-        S_im = f * S_im_tm1 + c * im
-        
-        A = torch.square(S_re) + torch.square(S_im)
+            time = time_tm1 + 1
 
-        A = torch.reshape(A, (-1, self.freq_dim))
-        A_a = torch.matmul(A * B_U[0], self.U_a)
-        A_a = torch.reshape(A_a, (-1, self.hidden_dim))
-        a = self.activation(A_a + self.b_a)
-        
-        o = self.inner_activation(x_o + torch.matmul(h_tm1 * B_U[0], self.U_o))
+            omega = torch.tensor(2 * np.pi) * time * frequency
 
-        h = o * a
-        p = torch.matmul(h, self.W_p) + self.b_p
+            re = torch.cos(omega) 
+            im = torch.sin(omega)
+            
+            c = torch.reshape(c, (-1, self.hidden_dim, 1))
+
+            S_re = f * S_re_tm1 + c * re
+            S_im = f * S_im_tm1 + c * im
+            
+            A = torch.square(S_re) + torch.square(S_im)
+
+            A = torch.reshape(A, (-1, self.freq_dim))
+            A_a = torch.matmul(A * B_U[0], self.U_a)
+            A_a = torch.reshape(A_a, (-1, self.hidden_dim))
+            a = self.activation(A_a + self.b_a)
+            
+            o = self.inner_activation(x_o + torch.matmul(h_tm1 * B_U[0], self.U_o))
+
+            h = o * a
+            p = torch.matmul(h, self.W_p) + self.b_p
 
 
-        self.states = [p, h, S_re, S_im, time, None, None, None]
+            self.states = [p, h, S_re, S_im, time, None, None, None]
 
         return p
 
@@ -285,7 +297,7 @@ class SFM(nn.Module):
         constants.append([torch.tensor(1.) for _ in range(6)])
         constants.append([torch.tensor(1.) for _ in range(7)])
         array = np.array([float(ii)/self.freq_dim for ii in range(self.freq_dim)])
-        constants.append([torch.tensor(array)])
+        constants.append(torch.tensor(array))
 
         self.states[5:] = constants
 
