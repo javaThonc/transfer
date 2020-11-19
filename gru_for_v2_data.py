@@ -154,13 +154,12 @@ class LSTM(nn.Module):
 class SFM(nn.Module):
     def __init__(self, d_feat=6, output_dim = 1, freq_dim = 10, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
         super().__init__()
+
         self.input_dim  = d_feat
         self.output_dim = output_dim
         self.freq_dim = freq_dim
         self.hidden_dim = hidden_size
 
-        print(self.hidden_dim)
-        print(hidden_size)
         self.W_i = nn.Parameter(init.xavier_uniform_(torch.empty((self.input_dim, self.hidden_dim))))
         self.U_i = nn.Parameter(init.orthogonal_(torch.empty(self.hidden_dim, self.hidden_dim)))
         self.b_i = nn.Parameter(torch.zeros(self.hidden_dim))
@@ -220,7 +219,7 @@ class SFM(nn.Module):
     def forward(self, x):
         if(len(self.states)==0): #hasn't initialized yet
             self.init_states(x)
-        get_constants(x)
+        self.get_constants(x)
         p_tm1 = self.states[0]
         h_tm1 = self.states[1]
         S_re_tm1 = self.states[2]
