@@ -229,11 +229,6 @@ class SFM(nn.Module):
         B_U = self.states[5]
         B_W = self.states[6]
         frequency = self.states[7]
-        pprint(self.states)
-        pprint(x.shape)
-        pprint(self.B_W.shape)
-        pprint(self.W_i)
-        pprint(self.b_i.shape)
 
         x_i = torch.matmul(x * B_W[0], self.W_i) + self.b_i
         x_ste = torch.matmul(x * B_W[0], self.W_ste) + self.b_ste
@@ -241,6 +236,14 @@ class SFM(nn.Module):
         x_c = torch.matmul(x * B_W[0], self.W_c) + self.b_c
         x_o = torch.matmul(x * B_W[0], self.W_o) + self.b_o
         
+        print(self.states)
+        print(x.shape)
+        print(h_tm1.shape)
+        print(self.B_U.shape)
+        print(self.U_i.shape)
+        print(self.x_i.shape)
+        
+
         i = self.inner_activation(x_i + torch.matmul(h_tm1 * B_U[0], self.U_i))
         
         ste = self.inner_activation(x_ste + torch.matmul(h_tm1 * B_U[0], self.U_ste))
