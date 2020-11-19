@@ -211,7 +211,7 @@ class SFM(nn.Module):
         init_state_S_re = init_state * init_freq
         init_state_S_im = init_state * init_freq
         
-        init_state_time = torch.tensor(0.)
+        init_state_time = torch.tensor(0)
 
         self.states = [init_state_p, init_state_h, init_state_S_re, init_state_S_im, init_state_time, None, None, None]
     
@@ -251,7 +251,8 @@ class SFM(nn.Module):
 
         time = time_tm1 + 1
 
-        omega = 2 * np.pi * time * frequency
+        omega = torch.tensor(2 * np.pi) * time * frequency
+
         re = torch.cos(omega) 
         im = torch.sin(omega)
         
