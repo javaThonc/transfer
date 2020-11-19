@@ -193,7 +193,8 @@ class SFM(nn.Module):
         self.states = []
 
     def init_states(self, x):
-        print(x.shape)
+        x = x.reshape(len(x), self.d_feat, -1) # [N, F, T]
+        x = x.permute(0, 2, 1) # [N, T, F]
         init_state_h = torch.zeros_like(x)
         init_state_h = torch.sum(init_state_h, axis=1)
         reducer_s = torch.zeros((self.input_dim, self.hidden_dim))
@@ -220,14 +221,14 @@ class SFM(nn.Module):
         if(len(self.states)==0): #hasn't initialized yet
             self.init_states(x)
         get_constants(x)
-        p_tm1 = states[0]
-        h_tm1 = states[1]
-        S_re_tm1 = states[2]
-        S_im_tm1 = states[3]
-        time_tm1 = states[4]
-        B_U = states[5]
-        B_W = states[6]
-        frequency = states[7]
+        p_tm1 = self.states[0]
+        h_tm1 = self.states[1]
+        S_re_tm1 = self.states[2]
+        S_im_tm1 = self.states[3]
+        time_tm1 = self.states[4]
+        B_U = self.states[5]
+        B_W = self.states[6]
+        frequency = self.states[7]
 
         x_i = torch.matmul(x * B_W[0], self.W_i) + self.b_i
         x_ste = torch.matmul(x * B_W[0], self.W_ste) + self.b_ste
