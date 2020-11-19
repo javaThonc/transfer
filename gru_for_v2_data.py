@@ -154,7 +154,7 @@ class LSTM(nn.Module):
 class SFM(nn.Module):
     def __init__(self, d_feat=6, output_dim = 1, freq_dim = 10, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
         super().__init__()
-        self.v  = d_feat
+        self.input_dim  = d_feat
         self.output_dim = output_dim
         self.freq_dim = freq_dim
         self.hidden_dim = hidden_size
