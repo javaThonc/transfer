@@ -238,7 +238,7 @@ class SFM(nn.Module):
         
         print(x.shape)
         print(h_tm1.shape)
-        print(B_U.shape)
+        print(B_U[0].shape)
         print(self.U_i.shape)
         print(x_i.shape)
         print("print")
