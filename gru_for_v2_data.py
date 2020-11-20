@@ -504,11 +504,11 @@ def main(args):
         args.model_name, args.hidden_size, args.num_layers, args.dropout,
         args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset
     )
-    # if args.loss != 'logcosh':
-    #     suffix += '_loss%s'%(args.loss)
+    if args.loss != 'logcosh':
+        suffix += '_loss%s'%(args.loss)
 
-    # if args.exp_coef :
-    #     suffix += '_expcoef%d'%(args.exp_coef)
+    if args.exp_coef :
+        suffix += '_expcoef%d'%(args.exp_coef)
 
     output_path = args.outdir
     if not output_path:
