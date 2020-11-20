@@ -280,7 +280,7 @@ class SFM(nn.Module):
             
             A = torch.square(S_re) + torch.square(S_im)
 
-            A = torch.reshape(A, (-1, self.freq_dim)).double()
+            A = torch.reshape(A, (-1, self.freq_dim)).float()
             A_a = torch.matmul(A * B_U[0], self.U_a)
             A_a = torch.reshape(A_a, (-1, self.hidden_dim))
             a = self.activation(A_a + self.b_a)
@@ -292,7 +292,7 @@ class SFM(nn.Module):
 
 
             self.states = [p, h, S_re, S_im, time, None, None, None]
-
+        self.states = []    
         return p
 
     def get_constants(self, x):
@@ -461,7 +461,7 @@ def inference(model, data_loader):
         feature, label, index = data_loader.get(slc)
         with torch.no_grad():
             pred = model(feature)
-
+        pred = pred.squeeze()
         preds.append(pd.DataFrame({
             'score': pred.cpu().numpy(),
             'label': label.cpu().numpy(),
