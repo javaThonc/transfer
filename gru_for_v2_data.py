@@ -195,16 +195,17 @@ class SFM(nn.Module):
 
         # init_state_h = torch.zeros_like(x)
         # init_state_h = torch.sum(init_state_h, axis=1)
-        reducer_s = torch.zeros((self.input_dim, self.hidden_dim))
-        reducer_f = torch.zeros((self.hidden_dim, self.freq_dim))
-        reducer_p = torch.zeros((self.hidden_dim, self.output_dim))
+        device = 'cuda:%d'%(1) if torch.cuda.is_available() else 'cpu'
+        reducer_s = torch.zeros((self.input_dim, self.hidden_dim)).to(device)
+        reducer_f = torch.zeros((self.hidden_dim, self.freq_dim)).to(device)
+        reducer_p = torch.zeros((self.hidden_dim, self.output_dim)).to(device)
         # init_state_h = torch.matmul(init_state_h, reducer_s)
         
-        init_state_h = torch.zeros(self.hidden_dim)
+        init_state_h = torch.zeros(self.hidden_dim).to(device)
 
         init_state_p = torch.matmul(init_state_h, reducer_p)
         
-        init_state = torch.zeros_like(init_state_h)
+        init_state = torch.zeros_like(init_state_h).to(device)
         init_freq = torch.matmul(init_state_h, reducer_f)
 
         init_state = torch.reshape(init_state, (-1, self.hidden_dim, 1))
@@ -213,7 +214,7 @@ class SFM(nn.Module):
         init_state_S_re = init_state * init_freq
         init_state_S_im = init_state * init_freq
         
-        init_state_time = torch.tensor(0)
+        init_state_time = torch.tensor(0).to(device)
 
         self.states = [init_state_p, init_state_h, init_state_S_re, init_state_S_im, init_state_time, None, None, None]
     
@@ -295,11 +296,12 @@ class SFM(nn.Module):
         return p
 
     def get_constants(self, x):
+        device = 'cuda:%d'%(1) if torch.cuda.is_available() else 'cpu'
         constants = []
-        constants.append([torch.tensor(1.) for _ in range(6)])
-        constants.append([torch.tensor(1.) for _ in range(7)])
+        constants.append([torch.tensor(1.).to(device) for _ in range(6)])
+        constants.append([torch.tensor(1.).to(device) for _ in range(7)])
         array = np.array([float(ii)/self.freq_dim for ii in range(self.freq_dim)])
-        constants.append(torch.tensor(array))
+        constants.append(torch.tensor(array).to(device))
 
         self.states[5:] = constants
 
@@ -498,10 +500,10 @@ def main(args):
     # np.random.seed(args.seed)
     # torch.manual_seed(args.seed)
 
-    # suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%s"%(
-    #     args.model_name, args.hidden_size, args.num_layers, args.dropout,
-    #     args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset
-    # )
+    suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%s"%(
+        args.model_name, args.hidden_size, args.num_layers, args.dropout,
+        args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset
+    )
     # if args.loss != 'logcosh':
     #     suffix += '_loss%s'%(args.loss)
 
@@ -525,13 +527,13 @@ def main(args):
     # global_log_file = output_path + '/' + 'run.log'
 
     # pprint('create model...')
-    # device = 'cuda:%d'%(args.cuda) if torch.cuda.is_available() else 'cpu'
+    device = 'cuda:%d'%(args.cuda) if torch.cuda.is_available() else 'cpu'
     model = get_model(args.model_name)(d_feat = args.d_feat, hidden_size = args.hidden_size, num_layers = args.num_layers, dropout_W = args.dropout, dropout_U = args.dropout)
-    # model.to(device)
+    model.to(device)
     # optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     # pprint('create loaders...')
-    # train_loader, valid_loader, test_loader = create_loaders(args=args, device=device)
+    train_loader, valid_loader, test_loader = create_loaders(args=args, device=device)
 
     # best_score = -np.inf
     # best_epoch = 0
