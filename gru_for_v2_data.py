@@ -195,8 +195,8 @@ class SFM(nn.Module):
 
         # init_state_h = torch.zeros_like(x)
         # init_state_h = torch.sum(init_state_h, axis=1)
-        # reducer_s = torch.zeros((self.input_dim, self.hidden_dim))
-        # reducer_f = torch.zeros((self.hidden_dim, self.freq_dim))
+        reducer_s = torch.zeros((self.input_dim, self.hidden_dim))
+        reducer_f = torch.zeros((self.hidden_dim, self.freq_dim))
         reducer_p = torch.zeros((self.hidden_dim, self.output_dim))
         # init_state_h = torch.matmul(init_state_h, reducer_s)
         
@@ -252,18 +252,18 @@ class SFM(nn.Module):
             x_c = torch.matmul(x * B_W[0], self.W_c) + self.b_c
             x_o = torch.matmul(x * B_W[0], self.W_o) + self.b_o
             
-            i = self.inner_activation(x_i + torch.matmul(h_tm1 * B_U[0], self.U_i).unsqueeze(1)) # not sure whether I am doing in the right unsquuze
+            i = self.inner_activation(x_i + torch.matmul(h_tm1 * B_U[0], self.U_i)) # not sure whether I am doing in the right unsquuze
             
 
-            ste = self.inner_activation(x_ste + torch.matmul(h_tm1 * B_U[0], self.U_ste).unsqueeze(1))
-            fre = self.inner_activation(x_fre + torch.matmul(h_tm1 * B_U[0], self.U_fre).unsqueeze(1))
+            ste = self.inner_activation(x_ste + torch.matmul(h_tm1 * B_U[0], self.U_ste))
+            fre = self.inner_activation(x_fre + torch.matmul(h_tm1 * B_U[0], self.U_fre))
 
             ste = torch.reshape(ste, (-1, self.hidden_dim, 1))
             fre = torch.reshape(fre, (-1, 1, self.freq_dim))
             
             f = ste * fre
             
-            c = i * self.activation(x_c + torch.matmul(h_tm1 * B_U[0], self.U_c).unsqueeze(1))
+            c = i * self.activation(x_c + torch.matmul(h_tm1 * B_U[0], self.U_c))
 
             time = time_tm1 + 1
 
@@ -279,7 +279,7 @@ class SFM(nn.Module):
             
             A = torch.square(S_re) + torch.square(S_im)
 
-            A = torch.reshape(A, (-1, self.freq_dim))
+            A = torch.reshape(A, (-1, self.freq_dim)).double()
             A_a = torch.matmul(A * B_U[0], self.U_a)
             A_a = torch.reshape(A_a, (-1, self.hidden_dim))
             a = self.activation(A_a + self.b_a)
@@ -495,77 +495,78 @@ def create_loaders(args, device):
 
 def main(args):
 
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    # np.random.seed(args.seed)
+    # torch.manual_seed(args.seed)
 
-    suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%s"%(
-        args.model_name, args.hidden_size, args.num_layers, args.dropout,
-        args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset
-    )
-    if args.loss != 'logcosh':
-        suffix += '_loss%s'%(args.loss)
+    # suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%s"%(
+    #     args.model_name, args.hidden_size, args.num_layers, args.dropout,
+    #     args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset
+    # )
+    # if args.loss != 'logcosh':
+    #     suffix += '_loss%s'%(args.loss)
 
-    if args.exp_coef :
-        suffix += '_expcoef%d'%(args.exp_coef)
+    # if args.exp_coef :
+    #     suffix += '_expcoef%d'%(args.exp_coef)
 
     output_path = args.outdir
     if not output_path:
         output_path = './output/' + suffix
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    print(output_path)
+    # if not os.path.exists(output_path):
+    #     os.makedirs(output_path)
 
-    if not args.overwrite and os.path.exists(output_path+'/'+'info.json'):
-        print('already runned, exit.')
-        return
+    # if not args.overwrite and os.path.exists(output_path+'/'+'info.json'):
+    #     print('already runned, exit.')
+    #     return
 
-    writer = SummaryWriter(log_dir=output_path)
+    # writer = SummaryWriter(log_dir=output_path)
 
-    global global_log_file
-    global_log_file = output_path + '/' + 'run.log'
+    # global global_log_file
+    # global_log_file = output_path + '/' + 'run.log'
 
-    pprint('create model...')
-    device = 'cuda:%d'%(args.cuda) if torch.cuda.is_available() else 'cpu'
+    # pprint('create model...')
+    # device = 'cuda:%d'%(args.cuda) if torch.cuda.is_available() else 'cpu'
     model = get_model(args.model_name)(d_feat = args.d_feat, hidden_size = args.hidden_size, num_layers = args.num_layers, dropout_W = args.dropout, dropout_U = args.dropout)
-    model.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    # model.to(device)
+    # optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
-    pprint('create loaders...')
-    train_loader, valid_loader, test_loader = create_loaders(args=args, device=device)
+    # pprint('create loaders...')
+    # train_loader, valid_loader, test_loader = create_loaders(args=args, device=device)
 
-    best_score = -np.inf
-    best_epoch = 0
-    stop_round = 0
-    best_param = copy.deepcopy(model.state_dict())
-    params_list = collections.deque(maxlen=args.smooth_steps)
-    for epoch in range(args.n_epochs):
-        pprint('Epoch:', epoch)
+    # best_score = -np.inf
+    # best_epoch = 0
+    # stop_round = 0
+    # best_param = copy.deepcopy(model.state_dict())
+    # params_list = collections.deque(maxlen=args.smooth_steps)
+    # for epoch in range(args.n_epochs):
+    #     pprint('Epoch:', epoch)
 
-        pprint('training...')
-        train_epoch(epoch, model, optimizer, train_loader, writer, args)
-        torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
-        torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
+    #     pprint('training...')
+    #     train_epoch(epoch, model, optimizer, train_loader, writer, args)
+    #     torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
+    #     torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
 
-        pprint('evaluating...')
-        train_loss, train_score = test_epoch(epoch, model, train_loader, writer, args, prefix='Train')
-        val_loss, val_score = test_epoch(epoch, model, valid_loader, writer, args, prefix='Valid')
-        test_loss, test_score = test_epoch(epoch, model, test_loader, writer, args, prefix='Test')
+    #     pprint('evaluating...')
+    #     train_loss, train_score = test_epoch(epoch, model, train_loader, writer, args, prefix='Train')
+    #     val_loss, val_score = test_epoch(epoch, model, valid_loader, writer, args, prefix='Valid')
+    #     test_loss, test_score = test_epoch(epoch, model, test_loader, writer, args, prefix='Test')
 
-        pprint('train %.6f, valid %.6f, test %.6f'%(train_score, val_score, test_score))
+    #     pprint('train %.6f, valid %.6f, test %.6f'%(train_score, val_score, test_score))
 
-        if val_score > best_score:
-            best_score = val_score
-            stop_round = 0
-            best_epoch = epoch
-            best_param = copy.deepcopy(model.state_dict())
-        else:
-            stop_round += 1
-            if stop_round >= args.early_stop:
-                pprint('early stop')
-                break
+    #     if val_score > best_score:
+    #         best_score = val_score
+    #         stop_round = 0
+    #         best_epoch = epoch
+    #         best_param = copy.deepcopy(model.state_dict())
+    #     else:
+    #         stop_round += 1
+    #         if stop_round >= args.early_stop:
+    #             pprint('early stop')
+    #             break
 
-    pprint('best score:', best_score, '@', best_epoch)
-    model.load_state_dict(best_param)
-    torch.save(best_param, output_path+'/model.bin')
+    # pprint('best score:', best_score, '@', best_epoch)
+    # model.load_state_dict(best_param)
+    # torch.save(best_param, output_path+'/model.bin')
 
     best_param = torch.load(output_path + '/model.bin')
     model.load_state_dict(best_param)
