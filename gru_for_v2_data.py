@@ -191,15 +191,14 @@ class SFM(nn.Module):
         self.dropout_W, self.dropout_U = (dropout_W, dropout_U)
         self.states = []
 
+        self.fc_out = nn.Linear(self.output_dim, 1)
+
+
     def init_states(self, x):
 
-        # init_state_h = torch.zeros_like(x)
-        # init_state_h = torch.sum(init_state_h, axis=1)
         device = 'cuda:%d'%(1) if torch.cuda.is_available() else 'cpu'
-        reducer_s = torch.zeros((self.input_dim, self.hidden_dim)).to(device)
         reducer_f = torch.zeros((self.hidden_dim, self.freq_dim)).to(device)
         reducer_p = torch.zeros((self.hidden_dim, self.output_dim)).to(device)
-        # init_state_h = torch.matmul(init_state_h, reducer_s)
         
         init_state_h = torch.zeros(self.hidden_dim).to(device)
 
@@ -293,7 +292,7 @@ class SFM(nn.Module):
 
             self.states = [p, h, S_re, S_im, time, None, None, None]
         self.states = []    
-        return p
+        return  self.fc_out(p[:, -1, :]).squeeze()
 
     def get_constants(self, x):
         device = 'cuda:%d'%(1) if torch.cuda.is_available() else 'cpu'
@@ -372,17 +371,6 @@ def loss_fn(pred, label, args):
     if args.loss == 'logcosh':
         return logcosh(pred[mask], label[mask])
 
-    if args.loss == 'labelmse':
-        return labelmse(pred[mask], label[mask])
-
-    if args.loss == 'longmse':
-        return longmse(pred[mask], label[mask])
-
-    if args.loss == 'labellogcosh':
-        return labellogcosh(pred[mask], label[mask])
-
-    if args.loss == 'longlogcosh':
-        return labellogcosh(pred[mask], label[mask])
 
     raise ValueError('unknown loss `%s`'%args.loss)
 
@@ -610,9 +598,9 @@ def parse_args():
     # training
     parser.add_argument('--n_epochs', type=int, default=200)
     parser.add_argument('--lr', type=float, default=2e-4)
-    parser.add_argument('--early_stop', type=int, default=20)
+    parser.add_argument('--early_stop', type=int, default=10)
     parser.add_argument('--smooth_steps', type=int, default=5)
-    parser.add_argument('--metric', default='') # '' refers to loss
+    parser.add_argument('--metric', default='IC') # '' refers to loss
     parser.add_argument('--loss', default='mse')
     parser.add_argument('--exp_coef', type=int, default=0)
 
