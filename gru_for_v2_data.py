@@ -475,7 +475,7 @@ def inference(model, data_loader):
 def create_loaders(args, device):
 
     df = pd.read_pickle('./' + args.dset+'.pkl')
-    df_label = pd.read_pickle('./' + args.label+'.pkl')
+    df_label = (pd.read_pickle('./' + 'sp500_newlabel'+'.pkl')[args.label])*100
 
     # NOTE: we always assume the last column is label
     df_feature = df.iloc[:, 0:360]
