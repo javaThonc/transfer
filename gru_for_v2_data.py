@@ -475,10 +475,11 @@ def inference(model, data_loader):
 def create_loaders(args, device):
 
     df = pd.read_pickle('./' + args.dset+'.pkl')
+    df_label = pd.read_pickle('./' + args.label+'.pkl')
 
     # NOTE: we always assume the last column is label
     df_feature = df.iloc[:, 0:360]
-    df_label = df[args.label]*100
+    # df_label = df[args.label]*100
     df_label[df_label > np.percentile(df_label, 99)] = np.percentile(df_label, 99)
     df_label[df_label < np.percentile(df_label, 1)] = np.percentile(df_label, 1)
 
