@@ -514,61 +514,61 @@ def main(args):
     if not output_path:
         output_path = './output/' + suffix
     print(output_path)
-    # if not os.path.exists(output_path):
-    #     os.makedirs(output_path)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
-    # if not args.overwrite and os.path.exists(output_path+'/'+'info.json'):
-    #     print('already runned, exit.')
-    #     return
+    if not args.overwrite and os.path.exists(output_path+'/'+'info.json'):
+        print('already runned, exit.')
+        return
 
-    # writer = SummaryWriter(log_dir=output_path)
+    writer = SummaryWriter(log_dir=output_path)
 
-    # global global_log_file
-    # global_log_file = output_path + '/' + 'run.log'
+    global global_log_file
+    global_log_file = output_path + '/' + 'run.log'
 
-    # pprint('create model...')
+    pprint('create model...')
     device = 'cuda:%d'%(args.cuda) if torch.cuda.is_available() else 'cpu'
     model = get_model(args.model_name)(d_feat = args.d_feat, hidden_size = args.hidden_size, num_layers = args.num_layers, dropout_W = args.dropout, dropout_U = args.dropout)
     model.to(device)
-    # optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
-    # pprint('create loaders...')
+    pprint('create loaders...')
     train_loader, valid_loader, test_loader = create_loaders(args=args, device=device)
 
-    # best_score = -np.inf
-    # best_epoch = 0
-    # stop_round = 0
-    # best_param = copy.deepcopy(model.state_dict())
-    # params_list = collections.deque(maxlen=args.smooth_steps)
-    # for epoch in range(args.n_epochs):
-    #     pprint('Epoch:', epoch)
+    best_score = -np.inf
+    best_epoch = 0
+    stop_round = 0
+    best_param = copy.deepcopy(model.state_dict())
+    params_list = collections.deque(maxlen=args.smooth_steps)
+    for epoch in range(args.n_epochs):
+        pprint('Epoch:', epoch)
 
-    #     pprint('training...')
-    #     train_epoch(epoch, model, optimizer, train_loader, writer, args)
-    #     torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
-    #     torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
+        pprint('training...')
+        train_epoch(epoch, model, optimizer, train_loader, writer, args)
+        torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
+        torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
 
-    #     pprint('evaluating...')
-    #     train_loss, train_score = test_epoch(epoch, model, train_loader, writer, args, prefix='Train')
-    #     val_loss, val_score = test_epoch(epoch, model, valid_loader, writer, args, prefix='Valid')
-    #     test_loss, test_score = test_epoch(epoch, model, test_loader, writer, args, prefix='Test')
+        pprint('evaluating...')
+        train_loss, train_score = test_epoch(epoch, model, train_loader, writer, args, prefix='Train')
+        val_loss, val_score = test_epoch(epoch, model, valid_loader, writer, args, prefix='Valid')
+        test_loss, test_score = test_epoch(epoch, model, test_loader, writer, args, prefix='Test')
 
-    #     pprint('train %.6f, valid %.6f, test %.6f'%(train_score, val_score, test_score))
+        pprint('train %.6f, valid %.6f, test %.6f'%(train_score, val_score, test_score))
 
-    #     if val_score > best_score:
-    #         best_score = val_score
-    #         stop_round = 0
-    #         best_epoch = epoch
-    #         best_param = copy.deepcopy(model.state_dict())
-    #     else:
-    #         stop_round += 1
-    #         if stop_round >= args.early_stop:
-    #             pprint('early stop')
-    #             break
+        if val_score > best_score:
+            best_score = val_score
+            stop_round = 0
+            best_epoch = epoch
+            best_param = copy.deepcopy(model.state_dict())
+        else:
+            stop_round += 1
+            if stop_round >= args.early_stop:
+                pprint('early stop')
+                break
 
-    # pprint('best score:', best_score, '@', best_epoch)
-    # model.load_state_dict(best_param)
-    # torch.save(best_param, output_path+'/model.bin')
+    pprint('best score:', best_score, '@', best_epoch)
+    model.load_state_dict(best_param)
+    torch.save(best_param, output_path+'/model.bin')
 
     best_param = torch.load(output_path + '/model.bin')
     model.load_state_dict(best_param)
