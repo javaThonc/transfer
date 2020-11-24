@@ -597,7 +597,7 @@ def parse_args():
 
     # training
     parser.add_argument('--n_epochs', type=int, default=200)
-    parser.add_argument('--lr', type=float, default=2e-4)
+    parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--early_stop', type=int, default=10)
     parser.add_argument('--smooth_steps', type=int, default=5)
     parser.add_argument('--metric', default='IC') # '' refers to loss
