@@ -152,7 +152,7 @@ class LSTM(nn.Module):
         return self.fc_out(out[:, -1, :]).squeeze()
 
 class SFM(nn.Module):
-    def __init__(self, d_feat=6, output_dim = 16, freq_dim = 20, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
+    def __init__(self, d_feat=6, output_dim = 16, freq_dim = 20, hidden_size = 64, num_layers = 1,dropout= 0.0):
         super().__init__()
 
         self.input_dim  = d_feat
@@ -188,7 +188,7 @@ class SFM(nn.Module):
         
         self.activation = nn.Tanh()
         self.inner_activation = nn.Hardsigmoid()
-        self.dropout_W, self.dropout_U = (dropout_W, dropout_U)
+        self.dropout_W, self.dropout_U = (dropout, dropout)
         self.states = []
 
         self.fc_out = nn.Linear(self.output_dim, 1)
