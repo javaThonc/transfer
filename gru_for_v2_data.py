@@ -524,42 +524,42 @@ def main(args):
     pprint('create loaders...')
     train_loader, valid_loader, test_loader = create_loaders(args=args, device=device)
 
-    # best_score = -np.inf
-    # best_epoch = 0
-    # stop_round = 0
-    # best_param = copy.deepcopy(model.state_dict())
-    # params_list = collections.deque(maxlen=args.smooth_steps)
-    # for epoch in range(args.n_epochs):
-    #     pprint('Epoch:', epoch)
+    best_score = -np.inf
+    best_epoch = 0
+    stop_round = 0
+    best_param = copy.deepcopy(model.state_dict())
+    params_list = collections.deque(maxlen=args.smooth_steps)
+    for epoch in range(args.n_epochs):
+        pprint('Epoch:', epoch)
 
-    #     pprint('training...')
-    #     train_epoch(epoch, model, optimizer, train_loader, writer, args)
-    #     torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
-    #     torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
+        pprint('training...')
+        train_epoch(epoch, model, optimizer, train_loader, writer, args)
+        torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
+        torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
 
-    #     pprint('evaluating...')
-    #     train_loss, train_score = test_epoch(epoch, model, train_loader, writer, args, prefix='Train')
-    #     val_loss, val_score = test_epoch(epoch, model, valid_loader, writer, args, prefix='Valid')
-    #     test_loss, test_score = test_epoch(epoch, model, test_loader, writer, args, prefix='Test')
+        pprint('evaluating...')
+        train_loss, train_score = test_epoch(epoch, model, train_loader, writer, args, prefix='Train')
+        val_loss, val_score = test_epoch(epoch, model, valid_loader, writer, args, prefix='Valid')
+        test_loss, test_score = test_epoch(epoch, model, test_loader, writer, args, prefix='Test')
 
-    #     pprint('train %.6f, valid %.6f, test %.6f'%(train_score, val_score, test_score))
+        pprint('train %.6f, valid %.6f, test %.6f'%(train_score, val_score, test_score))
 
-    #     if val_score > best_score:
-    #         best_score = val_score
-    #         stop_round = 0
-    #         best_epoch = epoch
-    #         best_param = copy.deepcopy(model.state_dict())
-    #     else:
-    #         stop_round += 1
-    #         if stop_round >= args.early_stop:
-    #             pprint('early stop')
-    #             break
+        if val_score > best_score:
+            best_score = val_score
+            stop_round = 0
+            best_epoch = epoch
+            best_param = copy.deepcopy(model.state_dict())
+        else:
+            stop_round += 1
+            if stop_round >= args.early_stop:
+                pprint('early stop')
+                break
 
-    # pprint('best score:', best_score, '@', best_epoch)
-    # model.load_state_dict(best_param)
-    # torch.save(best_param, output_path+'/model.bin')
+    pprint('best score:', best_score, '@', best_epoch)
+    model.load_state_dict(best_param)
+    torch.save(best_param, output_path+'/model.bin')
 
-    best_param = torch.load(output_path + '/model.bin.e49')
+    best_param = torch.load(output_path + '/model.bin')
     model.load_state_dict(best_param)
 
     pprint('inference...')
@@ -589,7 +589,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model
-    parser.add_argument('--model_name', default='SFM')
+    parser.add_argument('--model_name', default='LSTM')
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=64)
     parser.add_argument('--num_layers', type=int, default=2)
