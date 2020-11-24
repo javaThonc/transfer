@@ -152,7 +152,7 @@ class LSTM(nn.Module):
         return self.fc_out(out[:, -1, :]).squeeze()
 
 class SFM(nn.Module):
-    def __init__(self, d_feat=6, output_dim = 16, freq_dim = 20, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
+    def __init__(self, d_feat=6, output_dim = 16, freq_dim = 20, hidden_size = 64, num_layers = 1,dropout= 0.0):
         super().__init__()
 
         self.input_dim  = d_feat
@@ -188,7 +188,7 @@ class SFM(nn.Module):
         
         self.activation = nn.Tanh()
         self.inner_activation = nn.Hardsigmoid()
-        self.dropout_W, self.dropout_U = (dropout_W, dropout_U)
+        self.dropout_W, self.dropout_U = (dropout, dropout)
         self.states = []
 
         self.fc_out = nn.Linear(self.output_dim, 1)
@@ -459,6 +459,11 @@ def inference(model, data_loader):
 
     return preds
 
+def normalize(data):
+    max_data = data.groupby(level=1).max()
+    min_data = data.groupby(level=1).min()
+    data = (2 * data - (max_data + min_data)) / (max_data - min_data)
+    return data
 
 def create_loaders(args, device):
 
@@ -466,8 +471,12 @@ def create_loaders(args, device):
     # df_label = (pd.read_pickle('./' + args.+'.pkl')[args.label])*100
 
     # NOTE: we always assume the last column is label
-    df_feature = df.iloc[:, 0:360]
-    df_label = df[args.label]*100
+    # df_feature = df.iloc[:, 0:360]
+    # df = df.swaplevel(0,1)
+    df_feature = df.iloc[:, 0:5]
+    df_feature[df_feature > np.percentile(df_feature, 99)] = np.percentile(df_feature, 99)
+    df_feature[df_feature < np.percentile(df_feature, 1)] = np.percentile(df_feature, 1)
+    df_label = df.iloc[:,5]
     df_label[df_label > np.percentile(df_label, 99)] = np.percentile(df_label, 99)
     df_label[df_label < np.percentile(df_label, 1)] = np.percentile(df_label, 1)
 
@@ -485,9 +494,6 @@ def create_loaders(args, device):
 
 
 def main(args):
-
-    # np.random.seed(args.seed)
-    # torch.manual_seed(args.seed)
 
     suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%sfreq%soutput%s"%(
         args.model_name, args.hidden_size, args.num_layers, args.dropout,
@@ -590,7 +596,7 @@ def parse_args():
 
     # model
     parser.add_argument('--model_name', default='SFM')
-    parser.add_argument('--d_feat', type=int, default=6)
+    parser.add_argument('--d_feat', type=int, default=5)
     parser.add_argument('--hidden_size', type=int, default=64)
     parser.add_argument('--num_layers', type=int, default=2)
     parser.add_argument('--dropout', type=float, default=0.5)
@@ -607,7 +613,7 @@ def parse_args():
     # data
     parser.add_argument('--pin_memory', action='store_false', default=True)
     parser.add_argument('--batch_size', type=int, default=800) # -1 indicate daily batch
-    parser.add_argument('--dset', default='csi300_data_tanh')
+    parser.add_argument('--dset', default='new_data')
     parser.add_argument('--label', default='LABEL0') # specify other labels
     parser.add_argument('--train_start_date', default='2008-01-01')
     parser.add_argument('--train_end_date', default='2014-12-31')
