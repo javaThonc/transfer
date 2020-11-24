@@ -517,7 +517,7 @@ def main(args):
 
     pprint('create model...')
     device = 'cuda:%d'%(args.cuda) if torch.cuda.is_available() else 'cpu'
-    model = get_model(args.model_name)(d_feat = args.d_feat, hidden_size = args.hidden_size, num_layers = args.num_layers, dropout_W = args.dropout, dropout_U = args.dropout)
+    model = get_model(args.model_name)(d_feat = args.d_feat, hidden_size = args.hidden_size, num_layers = args.num_layers, dropout = args.dropout)
     model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
