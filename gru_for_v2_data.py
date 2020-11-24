@@ -152,7 +152,7 @@ class LSTM(nn.Module):
         return self.fc_out(out[:, -1, :]).squeeze()
 
 class SFM(nn.Module):
-    def __init__(self, d_feat=6, output_dim = 1, freq_dim = 10, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
+    def __init__(self, d_feat=6, output_dim = 1, freq_dim = 5, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
         super().__init__()
 
         self.input_dim  = d_feat
@@ -292,7 +292,7 @@ class SFM(nn.Module):
 
             self.states = [p, h, S_re, S_im, time, None, None, None]
         self.states = []    
-        return  self.fc_out(p[:, -1, :]).squeeze()
+        return  self.fc_out(p).squeeze()
 
     def get_constants(self, x):
         device = 'cuda:%d'%(1) if torch.cuda.is_available() else 'cpu'
@@ -462,12 +462,12 @@ def inference(model, data_loader):
 
 def create_loaders(args, device):
 
-    df = pd.read_pickle('./' + args.dset+'.pkl')
-    df_label = (pd.read_pickle('./' + 'sp500_newlabel'+'.pkl')[args.label])*100
+    df = pd.read_pickle('./' + args.dset +'.pkl')
+    # df_label = (pd.read_pickle('./' + args.+'.pkl')[args.label])*100
 
     # NOTE: we always assume the last column is label
     df_feature = df.iloc[:, 0:360]
-    # df_label = df[args.label]*100
+    df_label = df[args.label]*100
     df_label[df_label > np.percentile(df_label, 99)] = np.percentile(df_label, 99)
     df_label[df_label < np.percentile(df_label, 1)] = np.percentile(df_label, 1)
 
@@ -489,9 +489,9 @@ def main(args):
     # np.random.seed(args.seed)
     # torch.manual_seed(args.seed)
 
-    suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%s"%(
+    suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%sfreq%soutput_dim%s"%(
         args.model_name, args.hidden_size, args.num_layers, args.dropout,
-        args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset
+        args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset, 5, 1
     )
     if args.loss != 'logcosh':
         suffix += '_loss%s'%(args.loss)
@@ -524,40 +524,40 @@ def main(args):
     pprint('create loaders...')
     train_loader, valid_loader, test_loader = create_loaders(args=args, device=device)
 
-    best_score = -np.inf
-    best_epoch = 0
-    stop_round = 0
-    best_param = copy.deepcopy(model.state_dict())
-    params_list = collections.deque(maxlen=args.smooth_steps)
-    for epoch in range(args.n_epochs):
-        pprint('Epoch:', epoch)
+    # best_score = -np.inf
+    # best_epoch = 0
+    # stop_round = 0
+    # best_param = copy.deepcopy(model.state_dict())
+    # params_list = collections.deque(maxlen=args.smooth_steps)
+    # for epoch in range(args.n_epochs):
+    #     pprint('Epoch:', epoch)
 
-        pprint('training...')
-        train_epoch(epoch, model, optimizer, train_loader, writer, args)
-        torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
-        torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
+    #     pprint('training...')
+    #     train_epoch(epoch, model, optimizer, train_loader, writer, args)
+    #     torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
+    #     torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
 
-        pprint('evaluating...')
-        train_loss, train_score = test_epoch(epoch, model, train_loader, writer, args, prefix='Train')
-        val_loss, val_score = test_epoch(epoch, model, valid_loader, writer, args, prefix='Valid')
-        test_loss, test_score = test_epoch(epoch, model, test_loader, writer, args, prefix='Test')
+    #     pprint('evaluating...')
+    #     train_loss, train_score = test_epoch(epoch, model, train_loader, writer, args, prefix='Train')
+    #     val_loss, val_score = test_epoch(epoch, model, valid_loader, writer, args, prefix='Valid')
+    #     test_loss, test_score = test_epoch(epoch, model, test_loader, writer, args, prefix='Test')
 
-        pprint('train %.6f, valid %.6f, test %.6f'%(train_score, val_score, test_score))
+    #     pprint('train %.6f, valid %.6f, test %.6f'%(train_score, val_score, test_score))
 
-        if val_score > best_score:
-            best_score = val_score
-            stop_round = 0
-            best_epoch = epoch
-            best_param = copy.deepcopy(model.state_dict())
-        else:
-            stop_round += 1
-            if stop_round >= args.early_stop:
-                pprint('early stop')
-                break
+    #     if val_score > best_score:
+    #         best_score = val_score
+    #         stop_round = 0
+    #         best_epoch = epoch
+    #         best_param = copy.deepcopy(model.state_dict())
+    #     else:
+    #         stop_round += 1
+    #         if stop_round >= args.early_stop:
+    #             pprint('early stop')
+    #             break
 
-    pprint('best score:', best_score, '@', best_epoch)
-    model.load_state_dict(best_param)
-    torch.save(best_param, output_path+'/model.bin')
+    # pprint('best score:', best_score, '@', best_epoch)
+    # model.load_state_dict(best_param)
+    # torch.save(best_param, output_path+'/model.bin')
 
     best_param = torch.load(output_path + '/model.bin')
     model.load_state_dict(best_param)
@@ -589,11 +589,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model
-    parser.add_argument('--model_name', default='GRU')
+    parser.add_argument('--model_name', default='SFM')
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=64)
     parser.add_argument('--num_layers', type=int, default=2)
-    parser.add_argument('--dropout', type=float, default=0.0)
+    parser.add_argument('--dropout', type=float, default=0.1)
 
     # training
     parser.add_argument('--n_epochs', type=int, default=200)
@@ -607,7 +607,7 @@ def parse_args():
     # data
     parser.add_argument('--pin_memory', action='store_false', default=True)
     parser.add_argument('--batch_size', type=int, default=800) # -1 indicate daily batch
-    parser.add_argument('--dset', default='sp500_data_tanh')
+    parser.add_argument('--dset', default='csi300_data_tanh')
     parser.add_argument('--label', default='LABEL0') # specify other labels
     parser.add_argument('--train_start_date', default='2008-01-01')
     parser.add_argument('--train_end_date', default='2014-12-31')
