@@ -152,7 +152,7 @@ class LSTM(nn.Module):
         return self.fc_out(out[:, -1, :]).squeeze()
 
 class SFM(nn.Module):
-    def __init__(self, d_feat=6, output_dim = 16, freq_dim = 10, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
+    def __init__(self, d_feat=6, output_dim = 16, freq_dim = 5, hidden_size = 64, num_layers = 1,dropout_W = 0.0, dropout_U = 0.0):
         super().__init__()
 
         self.input_dim  = d_feat
@@ -489,9 +489,9 @@ def main(args):
     # np.random.seed(args.seed)
     # torch.manual_seed(args.seed)
 
-    suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%sfreq%soutput_dim%s"%(
+    suffix = "%s_dh%s_dn%s_drop%s_lr%s_bs%s_seed%s%s_label%s_dset%sfreq%soutput%s"%(
         args.model_name, args.hidden_size, args.num_layers, args.dropout,
-        args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset, 10, 16
+        args.lr, args.batch_size, args.seed, args.annot, args.label, args.dset, 5, 16
     )
     if args.loss != 'logcosh':
         suffix += '_loss%s'%(args.loss)
@@ -559,7 +559,7 @@ def main(args):
     # model.load_state_dict(best_param)
     # torch.save(best_param, output_path+'/model.bin')
 
-    best_param = torch.load(output_path + '/model.bin.e87')
+    best_param = torch.load(output_path + '/model.bin.e49')
     model.load_state_dict(best_param)
 
     pprint('inference...')
