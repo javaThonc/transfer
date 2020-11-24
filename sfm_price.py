@@ -476,7 +476,7 @@ def create_loaders(args, device):
     df_feature = df.iloc[:, 0:5]
     df_feature[df_feature > np.percentile(df_feature, 99)] = np.percentile(df_feature, 99)
     df_feature[df_feature < np.percentile(df_feature, 1)] = np.percentile(df_feature, 1)
-    df_label = df.iloc[:,6]
+    df_label = df.iloc[:,5]
     df_label[df_label > np.percentile(df_label, 99)] = np.percentile(df_label, 99)
     df_label[df_label < np.percentile(df_label, 1)] = np.percentile(df_label, 1)
 
@@ -596,7 +596,7 @@ def parse_args():
 
     # model
     parser.add_argument('--model_name', default='SFM')
-    parser.add_argument('--d_feat', type=int, default=6)
+    parser.add_argument('--d_feat', type=int, default=5)
     parser.add_argument('--hidden_size', type=int, default=64)
     parser.add_argument('--num_layers', type=int, default=2)
     parser.add_argument('--dropout', type=float, default=0.5)
