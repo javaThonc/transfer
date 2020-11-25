@@ -1,5 +1,15 @@
-#  Copyright (c) Microsoft Corporation.
-#  Licensed under the MIT License.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import sys
 from pathlib import Path
@@ -62,8 +72,8 @@ if __name__ == "__main__":
             "kwargs": {
                 "d_feat": 6,
                 "hidden_size": 64,
-                "output_dim" : 1,
-                "freq_dim" : 15,
+                "output_dim" : 32,
+                "freq_dim" : 25,
                 "dropout_W": 0.5,
                 "dropout_U": 0.5,
                 "n_epochs": 200,
@@ -76,7 +86,7 @@ if __name__ == "__main__":
                 "lr_decay_steps" : 100,
                 "optimizer" : "gd",
                 "GPU": 0,
-                "seed": 0,
+                "seed": 710,
             },
         },
         "dataset": {

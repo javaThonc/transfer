@@ -229,6 +229,7 @@ class SFM(Model):
             "SFM parameters setting:"
             "\nd_feat : {}"
             "\nhidden_size : {}"
+            "\noutput_size : {}"
             "\nfrequency_dimension : {}" 
             "\ndropout_W: {}"
             "\ndropout_U: {}"
@@ -246,6 +247,7 @@ class SFM(Model):
             "\nseed : {}".format(
                 d_feat,
                 hidden_size,
+                output_dim,
                 freq_dim,
                 dropout_W,
                 dropout_U,
@@ -364,7 +366,6 @@ class SFM(Model):
 
             # validation
             train_loss += loss.val
-            # print(loss.val)
             if step and step % self.eval_steps == 0:
                 stop_steps += 1
                 train_loss /= self.eval_steps
@@ -442,18 +443,6 @@ class SFM(Model):
             preds.append(pred)
         
         return pd.Series(np.concatenate(preds), index=index)
-
-        # x_test = torch.from_numpy(x_test.values).float()
-
-        # x_test = x_test.to(self.device)
-        # self.sfm_model.eval()
-
-        # with torch.no_grad():
-        #     if self.device != 'cpu':
-        #         preds = self.sfm_model(x_test).detach().cpu().numpy()
-        #     else:
-        #         preds = self.sfm_model(x_test).detach().numpy()
-        # return pd.Series(preds, index=index)
 
     def save(self, filename, **kwargs):
         with save_multiple_parts_file(filename) as model_dir:
