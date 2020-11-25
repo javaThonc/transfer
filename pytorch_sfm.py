@@ -273,12 +273,12 @@ class SFM(Model):
 
         self.sfm_model = SFM_Model(
             d_feat=self.d_feat, 
-            output_dim = self.output_dim,
-            hidden_size = self.hidden_size, 
-            freq_dim = self.freq_dim, 
+            output_dim=self.output_dim,
+            hidden_size=self.hidden_size, 
+            freq_dim=self.freq_dim, 
             dropout_W=self.dropout_W, 
-            dropout_U = self.dropout_U, 
-            device = self.device
+            dropout_U=self.dropout_U, 
+            device=self.device
             )
         if optimizer.lower() == "adam":
             self.train_optimizer = optim.Adam(self.sfm_model.parameters(), lr=self.lr)
@@ -309,11 +309,8 @@ class SFM(Model):
             if len(indices) - i < self.batch_size:
                 break
 
-            feature = torch.from_numpy(x_values[indices[i : i + self.batch_size]]).float()
-            label = torch.from_numpy(y_values[indices[i : i + self.batch_size]]).float()
-
-            feature = feature.to(self.device)
-            label = label.to(self.device)
+            feature = torch.from_numpy(x_values[indices[i : i + self.batch_size]]).float().to(self.device)
+            label = torch.from_numpy(y_values[indices[i : i + self.batch_size]]).float().to(self.device)
 
             pred = self.sfm_model(feature)
             loss = self.loss_fn(pred, label)
@@ -339,11 +336,8 @@ class SFM(Model):
             if len(indices) - i < self.batch_size:
                 break
 
-            feature = torch.from_numpy(x_train_values[indices[i : i + self.batch_size]]).float()
-            label = torch.from_numpy(y_train_values[indices[i : i + self.batch_size]]).float()
-
-            feature.to(self.device)
-            label.to(self.device)
+            feature = torch.from_numpy(x_train_values[indices[i : i + self.batch_size]]).float().to(self.device)
+            label = torch.from_numpy(y_train_values[indices[i : i + self.batch_size]]).float().to(self.device)
 
             pred = self.sfm_model(feature)
             loss = self.loss_fn(pred, label)
@@ -445,23 +439,6 @@ class SFM(Model):
             preds.append(pred)
         
         return pd.Series(np.concatenate(preds), index=index)
-
-    def save(self, filename, **kwargs):
-        with save_multiple_parts_file(filename) as model_dir:
-            model_path = os.path.join(model_dir, os.path.split(model_dir)[-1])
-            # Save model
-            torch.save(self.sfm_model.state_dict(), model_path)
-
-    def load(self, buffer, **kwargs):
-        with unpack_archive_with_buffer(buffer) as model_dir:
-            # Get model name
-            _model_name = os.path.splitext(list(filter(lambda x: x.startswith("model.bin"), os.listdir(model_dir)))[0])[
-                0
-            ]
-            _model_path = os.path.join(model_dir, _model_name)
-            # Load model
-            self.sfm_model.load_state_dict(torch.load(_model_path))
-        self._fitted = True
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
