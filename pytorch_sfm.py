@@ -407,13 +407,9 @@ class SFM(Model):
         if self.device != 'cpu':
             torch.cuda.empty_cache()
 
-    def loss_fn(self, pred, label):
-        mask = ~torch.isnan(label)
-
-        if self.loss == "mse":
-            return self.mse(pred[mask], label[mask])
-
-        raise ValueError("unknown loss `%s`" % self.loss)
+    def mse(self, pred, label):
+        loss = (pred - label) ** 2
+        return torch.mean(loss)
 
     def metric_fn(self, pred, label):
 
@@ -425,6 +421,9 @@ class SFM(Model):
             return -self.loss_fn(pred[mask], label[mask])
 
         raise ValueError("unknown metric `%s`" % self.metric)
+
+    def cal_ic(self, pred, label):
+        return torch.mean(pred * label)
     def predict(self, dataset):
         if not self._fitted:
             raise ValueError("model is not fitted yet!")
