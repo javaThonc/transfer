@@ -14,6 +14,7 @@ from ...log import get_module_logger, TimeInspector
 
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 import torch.optim as optim
 
 from ...model.base import Model
@@ -228,7 +229,7 @@ class SFM(Model):
             "SFM parameters setting:"
             "\nd_feat : {}"
             "\nhidden_size : {}"
-            "\nfreqency_dimension : {}" 
+            "\nfrequency_dimension : {}" 
             "\ndropout_W: {}"
             "\ndropout_U: {}"
             "\nn_epochs : {}"
@@ -397,7 +398,7 @@ class SFM(Model):
                 # update learning rate
                 self.scheduler.step(cur_loss_val)
 
-        if device != 'cpu':
+        if self.device != 'cpu':
             torch.cuda.empty_cache()
 
     def get_loss(self, pred, target, loss_type):
@@ -417,17 +418,42 @@ class SFM(Model):
 
         x_test = dataset.prepare("test", col_set="feature")
         index = x_test.index
-        x_test = torch.from_numpy(x_test.values).float()
-
-        x_test = x_test.to(device)
         self.sfm_model.eval()
+        x_values = x_test.values
+        sample_num = x_values.shape[0]
+        preds = []
 
-        with torch.no_grad():
-            if device != 'cpu':
-                preds = self.sfm_model(x_test).detach().cpu().numpy()
+        for begin in range(sample_num)[::self.batch_size]:
+            if sample_num-begin<self.batch_size:
+                end = sample_num
             else:
-                preds = self.sfm_model(x_test).detach().numpy()
-        return pd.Series(preds, index=index)
+                end = begin + self.batch_size
+
+            x_batch = torch.from_numpy(x_values[begin:end]).float()
+
+            if self.device != 'cpu':
+                x_batch = x_batch.to(self.device)
+            
+            with torch.no_grad():
+                if self.device != 'cpu':
+                    pred = self.sfm_model(x_batch).detach().cpu().numpy()
+                else:
+                    pred = self.sfm_model(x_batch).detach().cpu().numpy()
+            preds.append(pred)
+        
+        return pd.Series(np.concatenate(preds), index=index)
+
+        # x_test = torch.from_numpy(x_test.values).float()
+
+        # x_test = x_test.to(self.device)
+        # self.sfm_model.eval()
+
+        # with torch.no_grad():
+        #     if self.device != 'cpu':
+        #         preds = self.sfm_model(x_test).detach().cpu().numpy()
+        #     else:
+        #         preds = self.sfm_model(x_test).detach().numpy()
+        # return pd.Series(preds, index=index)
 
     def save(self, filename, **kwargs):
         with save_multiple_parts_file(filename) as model_dir:
