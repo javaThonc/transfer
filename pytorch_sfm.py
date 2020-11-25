@@ -407,17 +407,24 @@ class SFM(Model):
         if self.device != 'cpu':
             torch.cuda.empty_cache()
 
-    def get_loss(self, pred, target, loss_type):
-        if loss_type == "mse":
-            sqr_loss = (pred - target)**2
-            loss = sqr_loss.mean()
-            return loss
-        elif loss_type == "binary":
-            loss = nn.BCELoss()
-            return loss(pred, target)
-        else:
-            raise NotImplementedError("loss {} is not supported!".format(loss_type))
+    def loss_fn(self, pred, label):
+        mask = ~torch.isnan(label)
 
+        if self.loss == "mse":
+            return self.mse(pred[mask], label[mask])
+
+        raise ValueError("unknown loss `%s`" % self.loss)
+
+    def metric_fn(self, pred, label):
+
+        mask = torch.isfinite(label)
+        if self.metric == "IC":
+            return self.cal_ic(pred[mask], label[mask])
+
+        if self.metric == "" or self.metric == "loss":  # use loss
+            return -self.loss_fn(pred[mask], label[mask])
+
+        raise ValueError("unknown metric `%s`" % self.metric)
     def predict(self, dataset):
         if not self._fitted:
             raise ValueError("model is not fitted yet!")
