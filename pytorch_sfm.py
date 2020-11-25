@@ -273,7 +273,7 @@ class SFM(Model):
             freq_dim = self.freq_dim, 
             dropout_W=self.dropout_W, 
             dropout_U = self.dropout_U, 
-            self.device
+            device = self.device
             )
         if optimizer.lower() == "adam":
             self.train_optimizer = optim.Adam(self.sfm_model.parameters(), lr=self.lr)
