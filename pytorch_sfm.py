@@ -410,7 +410,15 @@ class SFM(Model):
     def mse(self, pred, label):
         loss = (pred - label) ** 2
         return torch.mean(loss)
+   
+    def loss_fn(self, pred, label):
+        mask = ~torch.isnan(label)
 
+        if self.loss == "mse":
+            return self.mse(pred[mask], label[mask])
+
+        raise ValueError("unknown loss `%s`" % self.loss)
+    
     def metric_fn(self, pred, label):
 
         mask = torch.isfinite(label)
