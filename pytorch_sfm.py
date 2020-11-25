@@ -183,6 +183,7 @@ class SFM(Model):
         self,
         d_feat=6,
         hidden_size=64,
+        output_dim=1,
         freq_dim = 10,
         dropout_W=0.0,
         dropout_U=0.0,
@@ -265,7 +266,15 @@ class SFM(Model):
             raise NotImplementedError("loss {} is not supported!".format(loss))
         self._scorer = mean_squared_error if loss == "mse" else roc_auc_score
 
-        self.sfm_model = SFM_Model(d_feat=self.d_feat, hidden_size=self.hidden_size, freq_dim = self.freq_dim, dropout_W=self.dropout_W, dropout_U = self.dropout_U, self.device)
+        self.sfm_model = SFM_Model(
+            d_feat=self.d_feat, 
+            output_dim = self.output_dim,
+            hidden_size = self.hidden_size, 
+            freq_dim = self.freq_dim, 
+            dropout_W=self.dropout_W, 
+            dropout_U = self.dropout_U, 
+            self.device
+            )
         if optimizer.lower() == "adam":
             self.train_optimizer = optim.Adam(self.sfm_model.parameters(), lr=self.lr)
         elif optimizer.lower() == "gd":
