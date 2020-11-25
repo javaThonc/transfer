@@ -207,6 +207,7 @@ class SFM(Model):
         # set hyper-parameters.
         self.d_feat = d_feat
         self.hidden_size = hidden_size
+        self.output_dim = output_dim
         self.freq_dim = freq_dim
         self.dropout_W = dropout_W
         self.dropout_U = dropout_U
