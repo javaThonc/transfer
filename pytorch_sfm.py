@@ -183,6 +183,7 @@ class SFM(Model):
         self,
         d_feat=6,
         hidden_size=64,
+        freq_dim = 10,
         dropout_W=0.0,
         dropout_U=0.0,
         n_epochs=200,
@@ -205,6 +206,7 @@ class SFM(Model):
         # set hyper-parameters.
         self.d_feat = d_feat
         self.hidden_size = hidden_size
+        self.freq_dim = freq_dim
         self.dropout_W = dropout_W
         self.dropout_U = dropout_U
         self.n_epochs = n_epochs
@@ -224,7 +226,9 @@ class SFM(Model):
             "SFM parameters setting:"
             "\nd_feat : {}"
             "\nhidden_size : {}"
-            "\ndropout : {}"
+            "\nfreqency_dimension : {}" 
+            "\ndropout_W: {}"
+            "\ndropout_U: {}"
             "\nn_epochs : {}"
             "\nlr : {}"
             "\nbatch_size : {}"
@@ -239,7 +243,9 @@ class SFM(Model):
             "\nseed : {}".format(
                 d_feat,
                 hidden_size,
-                dropout,
+                freq_dim,
+                dropout_W,
+                dropout_U,
                 n_epochs,
                 lr,
                 batch_size,
@@ -259,7 +265,7 @@ class SFM(Model):
             raise NotImplementedError("loss {} is not supported!".format(loss))
         self._scorer = mean_squared_error if loss == "mse" else roc_auc_score
 
-        self.sfm_model = SFM_Model(d_feat=self.d_feat, hidden_size=self.hidden_size, dropout_W=self.dropout_W, dropout_U = self.dropout_U, self.device)
+        self.sfm_model = SFM_Model(d_feat=self.d_feat, hidden_size=self.hidden_size, freq_dim = self.freq_dim, dropout_W=self.dropout_W, dropout_U = self.dropout_U, self.device)
         if optimizer.lower() == "adam":
             self.train_optimizer = optim.Adam(self.sfm_model.parameters(), lr=self.lr)
         elif optimizer.lower() == "gd":

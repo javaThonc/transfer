@@ -472,7 +472,7 @@ def create_loaders(args, device):
 
     # NOTE: we always assume the last column is label
     # df_feature = df.iloc[:, 0:360]
-    # df = df.swaplevel(0,1)
+    df = df.swaplevel(0,1).sort_index(0)
     df_feature = df.iloc[:, 0:5]
     df_feature[df_feature > np.percentile(df_feature, 99)] = np.percentile(df_feature, 99)
     df_feature[df_feature < np.percentile(df_feature, 1)] = np.percentile(df_feature, 1)

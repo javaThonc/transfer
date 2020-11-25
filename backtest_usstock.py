@@ -17,4 +17,4 @@ for path in os.listdir('./output/'):
     print("IR = ", ret.mean()/ret.std()*np.sqrt(250))
     ic = score.groupby(level=0).apply(lambda x:x.score.corr(x.label0))
     print("IC = ", ic.mean())
-    print("ICIR = ", ic.mean()/ic.std())
+    print("ICIR = ", ic.mean()/ic.std())gr

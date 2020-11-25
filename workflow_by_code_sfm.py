@@ -62,8 +62,9 @@ if __name__ == "__main__":
             "kwargs": {
                 "d_feat": 6,
                 "hidden_size": 64,
-                "dropout_W": 0.0,
-                "dropout_U": 0.0,
+                "freq_dim" : 15,
+                "dropout_W": 0.5,
+                "dropout_U": 0.5,
                 "n_epochs": 200,
                 "lr": 1e-3,
                 "batch_size": 800,

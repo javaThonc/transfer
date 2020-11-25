@@ -8,7 +8,7 @@ from pathlib import Path
 import qlib
 import pandas as pd
 from qlib.config import REG_CN
-from qlib.contrib.model.pytorch_gru import GRU
+#from qlib.contrib.model.pytorch_gru import GRU
 from qlib.contrib.data.handler import ALPHA360
 from qlib.contrib.strategy.strategy import TopkDropoutStrategy
 from qlib.contrib.evaluate import (
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     qlib.init(provider_uri=provider_uri, region=REG_CN)
     MARKET = "csi300"
     BENCHMARK = "SH000300"
-    pred_score = pd.read_pickle('/home/lewwang/output/GRU_dh64_dn2_drop0.0_lr0.001_bs800_seed0_label_dsetcsi500_tanh_process2_lossmse/pred_score.pkl')
+    pred_score = pd.read_pickle('./pred_freq25out32.pkl')
 
     ###################################
     # backtest
