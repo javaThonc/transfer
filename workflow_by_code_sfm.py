@@ -78,6 +78,7 @@ if __name__ == "__main__":
                 "dropout_U": 0.5,
                 "n_epochs": 200,
                 "lr": 1e-3,
+                "metric": "", 
                 "batch_size": 800,
                 "early_stop": 20,
                 "eval_steps": 5,

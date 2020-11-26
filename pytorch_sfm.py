@@ -225,13 +225,14 @@ class SFM(Model):
         self.dropout_U = dropout_U
         self.n_epochs = n_epochs
         self.lr = lr
+        self.metric = metric
         self.batch_size = batch_size
         self.early_stop = early_stop
         self.eval_steps = eval_steps
         self.lr_decay = lr_decay
         self.lr_decay_steps = lr_decay_steps
         self.optimizer = optimizer.lower()
-        self.loss_type = loss
+        self.loss = loss
         self.device = 'cuda:%d'%(GPU) if torch.cuda.is_available() else 'cpu'
         self.use_gpu = torch.cuda.is_available()
         self.seed = seed
@@ -246,6 +247,7 @@ class SFM(Model):
             "\ndropout_U: {}"
             "\nn_epochs : {}"
             "\nlr : {}"
+            "\nmetric : {}"
             "\nbatch_size : {}"
             "\nearly_stop : {}"
             "\neval_steps : {}"
@@ -264,6 +266,7 @@ class SFM(Model):
                 dropout_U,
                 n_epochs,
                 lr,
+                metric,
                 batch_size,
                 early_stop,
                 eval_steps,
