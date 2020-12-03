@@ -49,8 +49,8 @@ class TabNet(Model):
         torch.manual_seed(self.seed)
 
         self.tabnet_model = TabNet(inp_dim = self.d_feat, final_out_dim = self.final_out_dim, device = self.device)
-        self.tabnet_decoder = TabNet_Decoder(inp_dim = self.d_feat, out_dim = )
-
+        self.tabnet_decoder = TabNet_Decoder(inp_dim = self.final_out_dim, out_dim = self.d_feat, n_shared = n_shared, n_ind = n_ind, vbs = vbs, n_steps = n_steps )
+ 
         if optimizer.lower() == "adam":
             self.train_optimizer = optim.Adam(self.gru_model.parameters(), lr=self.lr)
         elif optimizer.lower() == "gd":

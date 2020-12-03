@@ -5,6 +5,7 @@ class TabNet_Decoder(nn.Module):
     class DecoderStep(nn.Module):
         def __init__(inp_dim, out_dim, shared, n_ind, vbs, device):
             super.__init__()
+
             self.fea_tran = FeatureTransformer(inp_dim, out_dim, shared, n_ind, vbs, device)
             self.fc = nn.Linear(out_dim, out_dim).to(device)
         
@@ -12,15 +13,22 @@ class TabNet_Decoder(nn.Module):
             x = self.fea_tran(x)
             return self.fc(x)
 
-    def __init__(inp_dim, out_dim, shared, n_ind, vbs, n_steps, device):
+    def __init__(inp_dim, out_dim, n_shared, n_ind, vbs, n_steps, device):
         """
         TabNet decoder that is used in pre-training
         """
         super().__init__()
+        if n_shared > 0:
+            self.shared = nn.ModuleList()
+            self.shared.append(nn.Linear(inp_dim, 2 * (n_d + n_a)))
+            for x in range(n_shared - 1):
+                self.shared.append(nn.Linear(n_d + n_a, 2 * (n_d + n_a))) # preset the linear function we will use
+        else:
+            self.shared=None
         self.n_steps = n_steps
         self.steps = nn.ModuleList()
         for x in range(n_steps):
-            self.steps.append(DecoderStep(inp_dim, out_dim, shared, n_ind, vbs, device))
+            self.steps.append(DecoderStep(inp_dim, out_dim, self.shared, n_ind, vbs, device))
 
     def forward(self, x):
         out = torch.zeros(x.size(0), out_dim).to(x.device)
