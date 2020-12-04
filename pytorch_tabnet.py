@@ -30,8 +30,8 @@ from ...data.dataset.handler import DataHandlerLP
 
 
 class TabNet_Model(Model):
-    def __init__(self, d_feat=158, final_out_dim=1, batch_size = 8192, n_d=64, n_a=64, n_shared=2, n_ind=2,
-     n_steps=5, n_epochs=100,relax=1.2, vbs=128, seed = 710, optimizer='adam', GPU='2', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
+    def __init__(self, d_feat=158, final_out_dim=1, batch_size = 32768, n_d=64, n_a=64, n_shared=2, n_ind=2,
+     n_steps=5, n_epochs=100,relax=1.2, vbs=8192, seed = 710, optimizer='adam', GPU='2', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
         # set hyper-parameters.
         self.d_feat = d_feat
         self.final_out_dim = final_out_dim
@@ -42,15 +42,22 @@ class TabNet_Model(Model):
         self.seed = seed
         self.ps = ps
         self.n_epochs = n_epochs
-        self.logger = get_module_logger("SFM")
-        self.device = "cuda:%d" % (GPU) if torch.cuda.is_available() else "cpu"
-        print(self.device)
+        self.logger = get_module_logger("TabNet")
+        self.device = "cuda:%s" % (GPU) if torch.cuda.is_available() else "cpu"
 
+        self.logger.info(
+                "TabNet:"
+                "\nbatch_size : {}"
+                "\nvirtual bs : {}".format(
+                    self.batch_size,
+                    vbs
+                )
+        )
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
 
-        self.tabnet_model = TabNet(inp_dim = self.d_feat, final_out_dim = self.final_out_dim, device = self.device)
-        self.tabnet_decoder = TabNet_Decoder(self.final_out_dim, self.d_feat, n_shared, n_ind, vbs, n_steps, self.device)
+        self.tabnet_model = TabNet(inp_dim = self.d_feat, final_out_dim = self.final_out_dim, vbs = vbs,device = self.device).to(self.device)
+        self.tabnet_decoder = TabNet_Decoder(self.final_out_dim, self.d_feat, n_shared, n_ind, vbs, n_steps, self.device).to(self.device)
   
         if optimizer.lower() == "adam":
             self.train_optimizer = optim.Adam(list(self.tabnet_model.parameters())+list(self.tabnet_decoder.parameters()), lr=self.lr)
@@ -69,11 +76,12 @@ class TabNet_Model(Model):
 
         x_train = df_train["feature"]
         for epoch_idx in range(self.n_epochs):
+            self.logger.info('epoch: %s' % (epoch_idx))
             self.logger.info("training...")
             self.pretrain_epoch(x_train)
             self.logger.info("evaluating...")
-            train_loss = self.test_epoch(x_train, y_train)
-            self.logger.info("train %.6f" % (train_score))
+            train_loss = self.pretrain_test_epoch(x_train)
+            self.logger.info("train %.6f" % (train_loss))
     
     def fit():
         pass
@@ -94,23 +102,23 @@ class TabNet_Model(Model):
 
             if len(indices) - i < self.batch_size:
                 break
+            
             S_mask =  torch.bernoulli(torch.empty(self.batch_size, self.d_feat).fill_(self.ps))
             x_train_values = train_set[indices[i : i + self.batch_size]] * (1-S_mask)
             y_train_values = train_set[indices[i : i + self.batch_size]] * (S_mask)
 
+            S_mask.to(self.device)
             feature = x_train_values.float().to(self.device)
             label = y_train_values.float().to(self.device)
-
             (vec, sparse_loss) = self.tabnet_model(feature)
             f = self.tabnet_decoder(vec)
-
             loss = self.loss_fn(label, f, S_mask) + sparse_loss
 
             self.train_optimizer.zero_grad()
             loss.backward()
             self.train_optimizer.step()
 
-    def pretain_test_epoch(self, x_train):
+    def pretrain_test_epoch(self, x_train):
 
         train_set = torch.from_numpy(x_train.values)
         indices = np.arange(len(train_set))
@@ -131,7 +139,7 @@ class TabNet_Model(Model):
 
             feature = x_train_values.float().to(self.device)
             label = y_train_values.float().to(self.device)
-
+            S_mask.to(self.device)
             (vec, sparse_loss) = self.tabnet_model(feature)
             f = self.tabnet_decoder(vec)
 
@@ -142,19 +150,10 @@ class TabNet_Model(Model):
 
 
     def loss_fn(self, f_hat, f, S):
-        loss = torch.tensor(0).float().to(self.device)
-        sum_b = torch.sum(f, dim=0)/S.size(0)
-
-        for j in range(S.size(1)):
-            dominator = torch.tensor(0).float().to(self.device)
-            for b1 in range(S.size(0)):
-                dominator += torch.square(f[b1][j] - sum_b[j])
-            dominator = torch.sqrt(dominator)
-            numerator = torch.tensor(0).float().to(self.device)
-            for b2 in range(S.size(0)):
-                numerator = S[b2][j] * (f_hat[b2][j] - f[b2][j])
-                loss += torch.square(numerator/dominator)
-        return loss
+        down_mean = torch.mean(f, dim=0)
+        down = torch.sqrt(torch.sum(torch.square(f-down_mean), dim = 0))
+        up = (f_hat.to(self.device)-f.to(self.device))*S.to(self.device)
+        return torch.sum(torch.square(up/down))
 
 class DecoderStep(nn.Module):
     def __init__(self, inp_dim, out_dim, shared, n_ind, vbs, device):
@@ -196,7 +195,7 @@ class TabNet_Decoder(nn.Module):
 
 
 class TabNet(nn.Module):
-    def __init__(self, inp_dim=6, final_out_dim=6, n_d=64, n_a=64, n_shared=2, n_ind=2, n_steps=5, relax=1.2, vbs=128, device = 'cpu'):
+    def __init__(self, inp_dim=6, final_out_dim=6, n_d=64, n_a=64, n_shared=2, n_ind=2, n_steps=5, relax=1.2, vbs=1024, device = 'cpu'):
         """
         TabNet AKA the original encoder
 
@@ -269,7 +268,7 @@ class GLU(nn.Module):
     Args:
         vbs: virtual batch size
     """
-    def __init__(self, inp_dim, out_dim, fc=None, vbs=128):
+    def __init__(self, inp_dim, out_dim, fc=None, vbs=1024):
         super().__init__()
         if fc:
             self.fc = fc
@@ -290,7 +289,7 @@ class AttentionTransformer(nn.Module):
         use the same features more. When it is set to 1
         we can use every feature only once
     """
-    def __init__(self, d_a, inp_dim, relax, vbs=128):
+    def __init__(self, d_a, inp_dim, relax, vbs=1024):
         super().__init__()
         self.fc = nn.Linear(d_a, inp_dim)
         self.bn = GBN(inp_dim, vbs=vbs)
