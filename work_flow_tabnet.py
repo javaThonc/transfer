@@ -32,10 +32,9 @@ if __name__ == "__main__":
         GetData().qlib_data_cn(target_dir=provider_uri)
 
     qlib.init(provider_uri=provider_uri, region=REG_CN)
-
+    
     MARKET = "csi300"
     BENCHMARK = "SH000300"
-
 
     ###################################
     # train model
@@ -48,41 +47,19 @@ if __name__ == "__main__":
         "instruments": MARKET,
     }
 
-    TRAINER_CONFIG = {
-        "train_start_time": "2008-01-01",
-        "train_end_time": "2014-12-31",
-        "validate_start_time": "2015-01-01",
-        "validate_end_time": "2016-12-31",
-        "test_start_time": "2017-01-01",
-        "test_end_time": "2020-08-01",
-    }
-
     task = {
         "model": {
-            "class": "GRU",
+            "class": "TabNet_Model",
             "module_path": "qlib.contrib.model.pytorch_tabnet",
             "kwargs": {
-                "d_feat": 6,
-                "hidden_size": 64,
-                "num_layers": 3,
-                "dropout": 0.0,
-                "n_epochs": 2000,
-                "lr": 1e-1,
-                "early_stop": 200,
-                "batch_size":800,
-                "smooth_steps": 5,
-                "metric": "mse",
-                "loss": "mse",
-                "seed": 0,
-                "GPU": 0,
-            }
+            },
         },
         "dataset": {
             "class": "DatasetH",
             "module_path": "qlib.data.dataset",
             "kwargs": {
                 'handler': {
-                    "class": "ALPHA360",
+                    "class": "Alpha158",
                     "module_path": "qlib.contrib.data.handler",
                     "kwargs": DATA_HANDLER_CONFIG
                 },
@@ -91,8 +68,6 @@ if __name__ == "__main__":
                 }
             }
         }
-        # You shoud record the data in specific sequence
-        # "record": ['SignalRecord', 'SigAnaRecord', 'PortAnaRecord'],
     }
 
     # model = train_model(task)
