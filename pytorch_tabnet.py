@@ -21,6 +21,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.autograd import Function
 
 from ...model.base import Model
 from ...data.dataset import DatasetH
@@ -30,8 +31,8 @@ from ...data.dataset.handler import DataHandlerLP
 
 
 class TabNet_Model(Model):
-    def __init__(self, d_feat=158, final_out_dim=1, batch_size = 32768, n_d=64, n_a=64, n_shared=2, n_ind=2,
-     n_steps=5, n_epochs=100,relax=1.2, vbs=8192, seed = 710, optimizer='adam', GPU='2', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
+    def __init__(self, d_feat=158, final_out_dim=64, batch_size = 8192, n_d=64, n_a=64, n_shared=2, n_ind=2,
+     n_steps=5, n_epochs=100,relax=1.2, vbs=2048, seed = 710, optimizer='adam', GPU='1', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
         # set hyper-parameters.
         self.d_feat = d_feat
         self.final_out_dim = final_out_dim
@@ -73,7 +74,7 @@ class TabNet_Model(Model):
             col_set=["feature", "label"],
             data_key=DataHandlerLP.DK_L,
         )
-
+        df_train.fillna(df_train.mean(), inplace = True)
         x_train = df_train["feature"]
         for epoch_idx in range(self.n_epochs):
             self.logger.info('epoch: %s' % (epoch_idx))
@@ -92,6 +93,7 @@ class TabNet_Model(Model):
     def pretrain_epoch(self, x_train):
         
         train_set = torch.from_numpy(x_train.values)
+        train_set[torch.isnan(train_set)] = 0
         indices = np.arange(len(train_set))
         np.random.shuffle(indices)
 
@@ -107,12 +109,13 @@ class TabNet_Model(Model):
             x_train_values = train_set[indices[i : i + self.batch_size]] * (1-S_mask)
             y_train_values = train_set[indices[i : i + self.batch_size]] * (S_mask)
 
-            S_mask.to(self.device)
+            S_mask = S_mask.to(self.device)
             feature = x_train_values.float().to(self.device)
             label = y_train_values.float().to(self.device)
-            (vec, sparse_loss) = self.tabnet_model(feature)
+            priors = 1-S_mask
+            (vec, sparse_loss) = self.tabnet_model(feature, priors)
             f = self.tabnet_decoder(vec)
-            loss = self.loss_fn(label, f, S_mask) + sparse_loss
+            loss = self.loss_fn(label, f, S_mask) 
 
             self.train_optimizer.zero_grad()
             loss.backward()
@@ -139,11 +142,12 @@ class TabNet_Model(Model):
 
             feature = x_train_values.float().to(self.device)
             label = y_train_values.float().to(self.device)
-            S_mask.to(self.device)
-            (vec, sparse_loss) = self.tabnet_model(feature)
+            S_mask = S_mask.to(self.device)
+            priors = 1-S_mask
+            (vec, sparse_loss) = self.tabnet_model(feature, priors)
             f = self.tabnet_decoder(vec)
-
-            loss = self.loss_fn(label, f, S_mask) + sparse_loss
+            
+            loss = self.loss_fn(label, f, S_mask)
             losses.append(loss.item())
 
         return np.mean(losses)
@@ -152,7 +156,7 @@ class TabNet_Model(Model):
     def loss_fn(self, f_hat, f, S):
         down_mean = torch.mean(f, dim=0)
         down = torch.sqrt(torch.sum(torch.square(f-down_mean), dim = 0))
-        up = (f_hat.to(self.device)-f.to(self.device))*S.to(self.device)
+        up = (f_hat - f)*S
         return torch.sum(torch.square(up/down))
 
 class DecoderStep(nn.Module):
@@ -224,16 +228,15 @@ class TabNet(nn.Module):
         for x in range(n_steps-1):
             self.steps.append(DecisionStep(inp_dim, n_d, n_a, self.shared, n_ind, relax, vbs, device))
         self.fc = nn.Linear(n_d, final_out_dim)
-        self.bn = nn.BatchNorm1d(inp_dim)
+        self.bn = nn.BatchNorm1d(inp_dim, momentum=0.01)
         self.n_d = n_d
     
-    def forward(self, x):
+    def forward(self, x, priors):
+        assert not torch.isnan(x).any()
         x = self.bn(x)
         x_a = self.first_step(x)[:, self.n_d:]
         sparse_loss = torch.zeros(1).to(x.device)
         out = torch.zeros(x.size(0), self.n_d).to(x.device)
-        priors = torch.ones(x.shape).to(x.device) # all priors were set to be one intialially
-
         for step in self.steps:
             x_te, l = step(x, x_a, priors)
             out += F.relu(x_te[:, :self.n_d]) #split the feautre from feat_transformer
@@ -296,9 +299,9 @@ class AttentionTransformer(nn.Module):
         self.r = relax
 
     #a:feature from previous decision step
-    def forward(self, a, priors): 
+    def forward(self, a, priors):  
         a = self.bn(self.fc(a)) 
-        mask = SparseMax(a * priors) 
+        mask = sparsemax(a * priors) 
         priors = priors * (self.r - mask)  #updating the prior
         return mask
 
@@ -328,7 +331,6 @@ class FeatureTransformer(nn.Module):
             for glu in self.shared[1:]:
                 x = torch.add(x, glu(x))
                 x = x * self.scale
-
         for glu in self.independ:
             x = torch.add(x, glu(x))
             x = x * self.scale
@@ -347,9 +349,91 @@ class DecisionStep(nn.Module):
 
     def forward(self, x, a, priors):
         mask = self.atten_tran(a, priors)
-        sparse_loss = SparseMax(mask)
+        sparse_loss = ((-1)*mask*torch.log(mask+1e-10)).mean()
         x = self.fea_tran(x * mask)
         return x ,sparse_loss
 
-def SparseMax(mask):
-    return ((-1)*mask*torch.log(mask+1e-10)).mean()
+def _make_ix_like(input, dim=0):
+    d = input.size(dim)
+    rho = torch.arange(1, d + 1, device=input.device, dtype=input.dtype)
+    view = [1] * input.dim()
+    view[0] = -1
+    return rho.view(view).transpose(0, dim)
+
+class SparsemaxFunction(Function):
+    """
+    An implementation of sparsemax (Martins & Astudillo, 2016). See
+    :cite:`DBLP:journals/corr/MartinsA16` for detailed description.
+    By Ben Peters and Vlad Niculae
+    """
+
+    @staticmethod
+    def forward(ctx, input, dim=-1):
+        """sparsemax: normalizing sparse transform (a la softmax)
+
+        Parameters
+        ----------
+        ctx : torch.autograd.function._ContextMethodMixin
+        input : torch.Tensor
+            any shape
+        dim : int
+            dimension along which to apply sparsemax
+
+        Returns
+        -------
+        output : torch.Tensor
+            same shape as input
+
+        """
+        ctx.dim = dim
+        max_val, _ = input.max(dim=dim, keepdim=True)
+        input -= max_val  # same numerical stability trick as for softmax
+        tau, supp_size = SparsemaxFunction._threshold_and_support(input, dim=dim)
+        output = torch.clamp(input - tau, min=0)
+        ctx.save_for_backward(supp_size, output)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        supp_size, output = ctx.saved_tensors
+        dim = ctx.dim
+        grad_input = grad_output.clone()
+        grad_input[output == 0] = 0
+
+        v_hat = grad_input.sum(dim=dim) / supp_size.to(output.dtype).squeeze()
+        v_hat = v_hat.unsqueeze(dim)
+        grad_input = torch.where(output != 0, grad_input - v_hat, grad_input)
+        return grad_input, None
+
+    @staticmethod
+    def _threshold_and_support(input, dim=-1):
+        """Sparsemax building block: compute the threshold
+
+        Parameters
+        ----------
+        input: torch.Tensor
+            any dimension
+        dim : int
+            dimension along which to apply the sparsemax
+
+        Returns
+        -------
+        tau : torch.Tensor
+            the threshold value
+        support_size : torch.Tensor
+
+        """
+
+        input_srt, _ = torch.sort(input, descending=True, dim=dim)
+        input_cumsum = input_srt.cumsum(dim) - 1
+        rhos = _make_ix_like(input, dim)
+        support = rhos * input_srt > input_cumsum
+
+        support_size = support.sum(dim=dim).unsqueeze(dim)
+        tau = input_cumsum.gather(dim, support_size - 1)
+        tau /= support_size.to(input.dtype)
+        return tau, support_size
+
+
+sparsemax = SparsemaxFunction.apply
+

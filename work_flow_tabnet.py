@@ -73,5 +73,4 @@ if __name__ == "__main__":
     # model = train_model(task)
     model = init_instance_by_config(task['model'])
     dataset = init_instance_by_config(task['dataset'])
-
     model.pretrain(dataset)
