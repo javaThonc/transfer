@@ -31,10 +31,11 @@ from ...data.dataset.handler import DataHandlerLP
 
 
 class TabNet_Model(Model):
-    def __init__(self, d_feat=158, final_out_dim=64, batch_size = 8192, n_d=64, n_a=64, n_shared=2, n_ind=2,
-     n_steps=5, n_epochs=100,relax=1.2, vbs=2048, seed = 710, optimizer='adam', GPU='1', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
+    def __init__(self, d_feat=158, out_dim = 64, final_out_dim = 1, batch_size = 8192, n_d=64, n_a=64, n_shared=2, n_ind=2,
+     n_steps=5, n_epochs=100, pretrain_n_epochs=300, relax=1.2, vbs=2048, seed = 710, optimizer='adam', GPU='1', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
         # set hyper-parameters.
         self.d_feat = d_feat
+        self.out_dim = out_dim
         self.final_out_dim = final_out_dim
         self.lr = lr
         self.batch_size = batch_size
@@ -44,6 +45,7 @@ class TabNet_Model(Model):
         self.ps = ps
         self.n_epochs = n_epochs
         self.logger = get_module_logger("TabNet")
+        self.pretrain_n_epochs = pretrain_n_epochs
         self.device = "cuda:%s" % (GPU) if torch.cuda.is_available() else "cpu"
 
         self.logger.info(
@@ -57,8 +59,8 @@ class TabNet_Model(Model):
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
 
-        self.tabnet_model = TabNet(inp_dim = self.d_feat, final_out_dim = self.final_out_dim, vbs = vbs,device = self.device).to(self.device)
-        self.tabnet_decoder = TabNet_Decoder(self.final_out_dim, self.d_feat, n_shared, n_ind, vbs, n_steps, self.device).to(self.device)
+        self.tabnet_model = TabNet(inp_dim = self.d_feat, out_dim = self.out_dim, vbs = vbs, device = self.device).to(self.device)
+        self.tabnet_decoder = TabNet_Decoder(self.out_dim, self.d_feat, n_shared, n_ind, vbs, n_steps, self.device).to(self.device)
   
         if optimizer.lower() == "adam":
             self.train_optimizer = optim.Adam(list(self.tabnet_model.parameters())+list(self.tabnet_decoder.parameters()), lr=self.lr)
@@ -68,30 +70,171 @@ class TabNet_Model(Model):
             raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
     
 
-    def pretrain(self, dataset = DatasetH):
-        [df_train] = dataset.prepare(
-            ["pretrain"],
+    def pretrain(self, dataset = DatasetH, pretrain_file = './pretrain/best.model'):
+        df_train = dataset.prepare(
+            "pretrain",
             col_set=["feature", "label"],
             data_key=DataHandlerLP.DK_L,
         )
         df_train.fillna(df_train.mean(), inplace = True)
         x_train = df_train["feature"]
-        for epoch_idx in range(self.n_epochs):
+        best_loss = -np.inf
+
+        for epoch_idx in range(self.pretrain_n_epochs):
             self.logger.info('epoch: %s' % (epoch_idx))
-            self.logger.info("training...")
+            self.logger.info("pre-training...")
             self.pretrain_epoch(x_train)
             self.logger.info("evaluating...")
             train_loss = self.pretrain_test_epoch(x_train)
             self.logger.info("train %.6f" % (train_loss))
-    
-    def fit():
-        pass
+            if train_loss < best_score:
+            	self.logger.info("Save Model...")
+            	torch.save(self.tabnet_model.state_dict(), pretrain_file)
+            	best_loss = train_loss
 
-    def predict():
-        pass
+    
+    
+    def fit(        
+    	self,
+        dataset: DatasetH,
+        evals_result=dict(),
+        verbose=True,
+        save_path=None,
+        pretrain_file = None
+    ):
+        if(pretrain_file != None):
+        	#there are pretrained model, load the model
+        	self.logger.info("Load Pretrain model")
+        	self.tabnet_model.load_state_dict(torch.load(pretrain_file))
+
+        #adding one more linear layer to fit the final output dimension
+        self.tabnet_model = nn.Sequential(self.tabnet_model, nn.Linear(self.out_dim, self.final_out_dim))
+        df_train, df_valid = dataset.prepare(
+            ["train", "valid"],
+            col_set=["feature", "label"],
+            data_key=DataHandlerLP.DK_L,
+        )
+        df_train.fillna(df_train.mean(), inplace = True)
+        x_train, y_train = df_train["feature"], df_train["label"]
+        x_valid, y_valid = df_valid["feature"], df_valid["label"]
+
+        stop_steps = 0
+        train_loss = 0
+        best_score = -np.inf
+        best_epoch = 0
+        evals_result["train"] = []
+        evals_result["valid"] = []
+
+        self.logger.info("training...")
+        self._fitted = True
+
+        for epoch_idx in range(self.n_epochs):
+            self.logger.info('epoch: %s' % (epoch_idx))
+            self.logger.info("training...")
+            self.train_epoch(x_train, y_train)
+            self.logger.info("evaluating...")
+            train_loss, train_score = self.test_epoch(x_train, y_train)
+            valid_loss, val_score = self.test_epoch(x_valid, y_valid)
+            self.logger.info("train %.6f, valid %.6f" % (train_score, val_score))
+            evals_result["train"].append(train_score)
+            evals_result["valid"].append(val_score)
+            
+            if val_score > best_score:
+                best_score = val_score
+                stop_steps = 0
+                best_epoch = step
+                best_param = copy.deepcopy(self.tabnet_model.state_dict())
+            else:
+                stop_steps += 1
+                if stop_steps >= self.early_stop:
+                    self.logger.info("early stop")
+                    break
+        self.logger.info("best score: %.6lf @ %d" % (best_score, best_epoch))
+
+    def predict(self, dataset):
+        if not self._fitted:
+            raise ValueError("model is not fitted yet!")
+
+        x_test = dataset.prepare("test", col_set="feature")
+        index = x_test.index
+        self.tabnet_model.eval()
+        x_values = x_test.values
+        sample_num = x_values.shape[0]
+        preds = []
+
+        for begin in range(sample_num)[:: self.batch_size]:
+            if sample_num - begin < self.batch_size:
+                end = sample_num
+            else:
+                end = begin + self.batch_size
+
+            x_batch = torch.from_numpy(x_values[begin:end]).float()
+
+            if self.device != "cpu":
+                x_batch = x_batch.to(self.device)
+
+            with torch.no_grad():
+                pred = self.tabnet_model(x_batch).detach().cpu().numpy()
+
+            preds.append(pred)
+
+        return pd.Series(np.concatenate(preds), index=index)
+
+
+    def test_epoch(self, data_x, data_y):
+        # prepare training data
+        x_values = data_x.values
+        y_values = np.squeeze(data_y.values)
+
+        self.tabnet_model.eval()
+
+        scores = []
+        losses = []
+
+        indices = np.arange(len(x_values))
+
+        for i in range(len(indices))[:: self.batch_size]:
+
+            if len(indices) - i < self.batch_size:
+                break
+            feature = torch.from_numpy(x_values[indices[i : i + self.batch_size]]).float().to(self.device)
+            label = torch.from_numpy(y_values[indices[i : i + self.batch_size]]).float().to(self.device)
+			priors = torch.ones(self.batch_size, self.d_feat).to(x.device)
+            pred = self.tabnet_model(feature, priors)
+            loss = self.loss_fn(pred, label)
+            losses.append(loss.item())
+
+            score = self.metric_fn(pred, label)
+            scores.append(score.item())
+
+        return np.mean(losses), np.mean(scores)
+
+    def train_epoch(self, x_train, y_train):
+        x_train_values = x_train.values
+        y_train_values = np.squeeze(y_train.values)
+
+        self.tabnet_model.train()
+
+        indices = np.arange(len(x_train_values))
+        np.random.shuffle(indices)
+
+        for i in range(len(indices))[:: self.batch_size]:
+
+            if len(indices) - i < self.batch_size:
+                break
+
+            feature = torch.from_numpy(x_train_values[indices[i : i + self.batch_size]]).float().to(self.device)
+            label = torch.from_numpy(y_train_values[indices[i : i + self.batch_size]]).float().to(self.device)
+			priors = torch.ones(self.batch_size, self.d_feat).to(x.device)
+            pred = self.tabnet_model(feature, priors)
+            loss = self.loss_fn(pred, label)
+
+            self.train_optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_value_(self.tabnet_model.parameters(), 3.0)
+            self.train_optimizer.step()
 
     def pretrain_epoch(self, x_train):
-        
         train_set = torch.from_numpy(x_train.values)
         train_set[torch.isnan(train_set)] = 0
         indices = np.arange(len(train_set))
@@ -115,7 +258,7 @@ class TabNet_Model(Model):
             priors = 1-S_mask
             (vec, sparse_loss) = self.tabnet_model(feature, priors)
             f = self.tabnet_decoder(vec)
-            loss = self.loss_fn(label, f, S_mask) 
+            loss = self.pretrain_loss_fn(label, f, S_mask) 
 
             self.train_optimizer.zero_grad()
             loss.backward()
@@ -147,17 +290,33 @@ class TabNet_Model(Model):
             (vec, sparse_loss) = self.tabnet_model(feature, priors)
             f = self.tabnet_decoder(vec)
             
-            loss = self.loss_fn(label, f, S_mask)
+            loss = self.pretrain_loss_fn(label, f, S_mask)
             losses.append(loss.item())
 
         return np.mean(losses)
 
 
-    def loss_fn(self, f_hat, f, S):
+    def pretrain_loss_fn(self, f_hat, f, S):
         down_mean = torch.mean(f, dim=0)
         down = torch.sqrt(torch.sum(torch.square(f-down_mean), dim = 0))
         up = (f_hat - f)*S
         return torch.sum(torch.square(up/down))
+
+    def loss_fn(self, pred, label):
+        mask = ~torch.isnan(label)
+        if self.loss == "mse":
+            return self.mse(pred[mask], label[mask])
+        raise ValueError("unknown loss `%s`" % self.loss)
+
+    def metric_fn(self, pred, label):
+        mask = torch.isfinite(label)
+        if self.metric == "" or self.metric == "loss":
+            return -self.loss_fn(pred[mask], label[mask])
+        raise ValueError("unknown metric `%s`" % self.metric)
+
+    def mse(self, pred, label):
+        loss = (pred - label) ** 2
+        return torch.mean(loss)
 
 class DecoderStep(nn.Module):
     def __init__(self, inp_dim, out_dim, shared, n_ind, vbs, device):
@@ -199,7 +358,7 @@ class TabNet_Decoder(nn.Module):
 
 
 class TabNet(nn.Module):
-    def __init__(self, inp_dim=6, final_out_dim=6, n_d=64, n_a=64, n_shared=2, n_ind=2, n_steps=5, relax=1.2, vbs=1024, device = 'cpu'):
+    def __init__(self, inp_dim=6, out_dim=6, n_d=64, n_a=64, n_shared=2, n_ind=2, n_steps=5, relax=1.2, vbs=1024, device = 'cpu'):
         """
         TabNet AKA the original encoder
 
@@ -227,7 +386,7 @@ class TabNet(nn.Module):
         self.steps = nn.ModuleList()
         for x in range(n_steps-1):
             self.steps.append(DecisionStep(inp_dim, n_d, n_a, self.shared, n_ind, relax, vbs, device))
-        self.fc = nn.Linear(n_d, final_out_dim)
+        self.fc = nn.Linear(n_d, out_dim)
         self.bn = nn.BatchNorm1d(inp_dim, momentum=0.01)
         self.n_d = n_d
     
@@ -353,6 +512,8 @@ class DecisionStep(nn.Module):
         x = self.fea_tran(x * mask)
         return x ,sparse_loss
 
+
+
 def _make_ix_like(input, dim=0):
     d = input.size(dim)
     rho = torch.arange(1, d + 1, device=input.device, dtype=input.dtype)
@@ -361,30 +522,9 @@ def _make_ix_like(input, dim=0):
     return rho.view(view).transpose(0, dim)
 
 class SparsemaxFunction(Function):
-    """
-    An implementation of sparsemax (Martins & Astudillo, 2016). See
-    :cite:`DBLP:journals/corr/MartinsA16` for detailed description.
-    By Ben Peters and Vlad Niculae
-    """
 
     @staticmethod
     def forward(ctx, input, dim=-1):
-        """sparsemax: normalizing sparse transform (a la softmax)
-
-        Parameters
-        ----------
-        ctx : torch.autograd.function._ContextMethodMixin
-        input : torch.Tensor
-            any shape
-        dim : int
-            dimension along which to apply sparsemax
-
-        Returns
-        -------
-        output : torch.Tensor
-            same shape as input
-
-        """
         ctx.dim = dim
         max_val, _ = input.max(dim=dim, keepdim=True)
         input -= max_val  # same numerical stability trick as for softmax
@@ -407,23 +547,6 @@ class SparsemaxFunction(Function):
 
     @staticmethod
     def _threshold_and_support(input, dim=-1):
-        """Sparsemax building block: compute the threshold
-
-        Parameters
-        ----------
-        input: torch.Tensor
-            any dimension
-        dim : int
-            dimension along which to apply the sparsemax
-
-        Returns
-        -------
-        tau : torch.Tensor
-            the threshold value
-        support_size : torch.Tensor
-
-        """
-
         input_srt, _ = torch.sort(input, descending=True, dim=dim)
         input_cumsum = input_srt.cumsum(dim) - 1
         rhos = _make_ix_like(input, dim)
