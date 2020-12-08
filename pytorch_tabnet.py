@@ -104,19 +104,19 @@ class TabNet_Model(Model):
             self.logger.info("train %.6f" % (train_loss))
             
             if train_loss < best_loss:
-            	self.logger.info("Save Model...")
-            	torch.save(self.tabnet_model.state_dict(), pretrain_file)
-            	best_loss = train_loss
+                self.logger.info("Save Model...")
+                torch.save(self.tabnet_model.state_dict(), pretrain_file)
+                best_loss = train_loss
             else:
-            	stop_steps+=1
-            	if stop_steps >= self.early_stop:
-            		self.logger.info("early stop")
+                stop_steps+=1
+                if stop_steps >= self.early_stop:
+                    self.logger.info("early stop")
                     break
 
     
     
     def fit(        
-    	self,
+        self,
         dataset: DatasetH,
         evals_result=dict(),
         verbose=True,
@@ -124,9 +124,9 @@ class TabNet_Model(Model):
         pretrain_file = None
     ):
         if(pretrain_file != None):
-        	#there are pretrained model, load the model
-        	self.logger.info("Load Pretrain model")
-        	self.tabnet_model.load_state_dict(torch.load(pretrain_file))
+            #there are pretrained model, load the model
+            self.logger.info("Load Pretrain model")
+            self.tabnet_model.load_state_dict(torch.load(pretrain_file))
 
         #adding one more linear layer to fit the final output dimension
         self.tabnet_model = FinetuneModel(self.out_dim, self.final_out_dim, self.tabnet_model).to(self.device)
@@ -343,9 +343,9 @@ class TabNet_Model(Model):
 
 
 class FinetuneModel(nn.Module):
-	"""
-	FinuetuneModel for adding a layer by the end
-	"""
+    """
+    FinuetuneModel for adding a layer by the end
+    """
     def __init__(self, input_dim, output_dim, trained_model):
         super().__init__()
         self.model = trained_model
@@ -560,9 +560,9 @@ def make_ix_like(input, dim=0):
     return rho.view(view).transpose(0, dim)
 
 class SparsemaxFunction(Function):
-	"""
-	SparseMax function for replacing reLU
-	"""
+    """
+    SparseMax function for replacing reLU
+    """
     @staticmethod
     def forward(ctx, input, dim=-1):
         ctx.dim = dim
