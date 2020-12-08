@@ -31,8 +31,8 @@ from ...data.dataset.handler import DataHandlerLP
 
 
 class TabNet_Model(Model):
-    def __init__(self, d_feat=158, out_dim = 64, final_out_dim = 1, batch_size = 8192, n_d=64, n_a=64, n_shared=2, n_ind=2,
-     n_steps=5, n_epochs=100, pretrain_n_epochs=300, relax=1.2, vbs=2048, seed = 710, optimizer='adam', GPU='1', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
+    def __init__(self, d_feat=158, out_dim = 64, final_out_dim = 1, batch_size = 4096, n_d=64, n_a=64, n_shared=2, n_ind=2,
+     n_steps=5, n_epochs=100, pretrain_n_epochs=50, relax=1.2, vbs=2048, seed = 710, optimizer='adam', loss = 'mse', metric = '', early_stop = 20, GPU='1', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
         # set hyper-parameters.
         self.d_feat = d_feat
         self.out_dim = out_dim
@@ -47,7 +47,9 @@ class TabNet_Model(Model):
         self.logger = get_module_logger("TabNet")
         self.pretrain_n_epochs = pretrain_n_epochs
         self.device = "cuda:%s" % (GPU) if torch.cuda.is_available() else "cpu"
-
+        self.loss = loss
+        self.metric = metric
+        self.early_stop = early_stop
         self.logger.info(
                 "TabNet:"
                 "\nbatch_size : {}"
@@ -78,7 +80,7 @@ class TabNet_Model(Model):
         )
         df_train.fillna(df_train.mean(), inplace = True)
         x_train = df_train["feature"]
-        best_loss = -np.inf
+        best_loss = np.inf
 
         for epoch_idx in range(self.pretrain_n_epochs):
             self.logger.info('epoch: %s' % (epoch_idx))
@@ -87,7 +89,7 @@ class TabNet_Model(Model):
             self.logger.info("evaluating...")
             train_loss = self.pretrain_test_epoch(x_train)
             self.logger.info("train %.6f" % (train_loss))
-            if train_loss < best_score:
+            if train_loss < best_loss:
             	self.logger.info("Save Model...")
             	torch.save(self.tabnet_model.state_dict(), pretrain_file)
             	best_loss = train_loss
@@ -108,7 +110,7 @@ class TabNet_Model(Model):
         	self.tabnet_model.load_state_dict(torch.load(pretrain_file))
 
         #adding one more linear layer to fit the final output dimension
-        self.tabnet_model = nn.Sequential(self.tabnet_model, nn.Linear(self.out_dim, self.final_out_dim))
+        self.tabnet_model = FinetuneModel(self.out_dim, self.final_out_dim, self.tabnet_model).to(self.device)
         df_train, df_valid = dataset.prepare(
             ["train", "valid"],
             col_set=["feature", "label"],
@@ -120,7 +122,7 @@ class TabNet_Model(Model):
 
         stop_steps = 0
         train_loss = 0
-        best_score = -np.inf
+        best_score = np.inf
         best_epoch = 0
         evals_result["train"] = []
         evals_result["valid"] = []
@@ -139,11 +141,12 @@ class TabNet_Model(Model):
             evals_result["train"].append(train_score)
             evals_result["valid"].append(val_score)
             
-            if val_score > best_score:
+            if val_score < best_score:
                 best_score = val_score
                 stop_steps = 0
-                best_epoch = step
-                best_param = copy.deepcopy(self.tabnet_model.state_dict())
+                best_epoch = epoch_idx
+            
+            
             else:
                 stop_steps += 1
                 if stop_steps >= self.early_stop:
@@ -158,7 +161,8 @@ class TabNet_Model(Model):
         x_test = dataset.prepare("test", col_set="feature")
         index = x_test.index
         self.tabnet_model.eval()
-        x_values = x_test.values
+        x_values = torch.from_numpy(x_test.values)
+        x_values[torch.isnan(x_values)] = 0
         sample_num = x_values.shape[0]
         preds = []
 
@@ -168,13 +172,11 @@ class TabNet_Model(Model):
             else:
                 end = begin + self.batch_size
 
-            x_batch = torch.from_numpy(x_values[begin:end]).float()
-
-            if self.device != "cpu":
-                x_batch = x_batch.to(self.device)
+            x_batch = x_values[begin:end].float().to(self.device)
+            priors = torch.ones(end - begin, self.d_feat).to(self.device)
 
             with torch.no_grad():
-                pred = self.tabnet_model(x_batch).detach().cpu().numpy()
+                pred = self.tabnet_model(x_batch, priors).detach().cpu().numpy()
 
             preds.append(pred)
 
@@ -183,9 +185,10 @@ class TabNet_Model(Model):
 
     def test_epoch(self, data_x, data_y):
         # prepare training data
-        x_values = data_x.values
-        y_values = np.squeeze(data_y.values)
-
+        x_values = torch.from_numpy(data_x.values)
+        y_values = torch.from_numpy(np.squeeze(data_y.values))
+        x_values[torch.isnan(x_values)] = 0
+        y_values[torch.isnan(y_values)] = 0
         self.tabnet_model.eval()
 
         scores = []
@@ -197,9 +200,9 @@ class TabNet_Model(Model):
 
             if len(indices) - i < self.batch_size:
                 break
-            feature = torch.from_numpy(x_values[indices[i : i + self.batch_size]]).float().to(self.device)
-            label = torch.from_numpy(y_values[indices[i : i + self.batch_size]]).float().to(self.device)
-			priors = torch.ones(self.batch_size, self.d_feat).to(x.device)
+            feature = x_values[indices[i : i + self.batch_size]].float().to(self.device)
+            label = y_values[indices[i : i + self.batch_size]].float().to(self.device)
+            priors = torch.ones(self.batch_size, self.d_feat).to(self.device)
             pred = self.tabnet_model(feature, priors)
             loss = self.loss_fn(pred, label)
             losses.append(loss.item())
@@ -210,9 +213,10 @@ class TabNet_Model(Model):
         return np.mean(losses), np.mean(scores)
 
     def train_epoch(self, x_train, y_train):
-        x_train_values = x_train.values
-        y_train_values = np.squeeze(y_train.values)
-
+        x_train_values = torch.from_numpy(x_train.values)
+        y_train_values = torch.from_numpy(np.squeeze(y_train.values))
+        x_train_values[torch.isnan(x_train_values)] = 0
+        y_train_values[torch.isnan(y_train_values)] = 0
         self.tabnet_model.train()
 
         indices = np.arange(len(x_train_values))
@@ -223,9 +227,9 @@ class TabNet_Model(Model):
             if len(indices) - i < self.batch_size:
                 break
 
-            feature = torch.from_numpy(x_train_values[indices[i : i + self.batch_size]]).float().to(self.device)
-            label = torch.from_numpy(y_train_values[indices[i : i + self.batch_size]]).float().to(self.device)
-			priors = torch.ones(self.batch_size, self.d_feat).to(x.device)
+            feature = x_train_values[indices[i : i + self.batch_size]].float().to(self.device)
+            label = y_train_values[indices[i : i + self.batch_size]].float().to(self.device)
+            priors = torch.ones(self.batch_size, self.d_feat).to(self.device)
             pred = self.tabnet_model(feature, priors)
             loss = self.loss_fn(pred, label)
 
@@ -267,6 +271,7 @@ class TabNet_Model(Model):
     def pretrain_test_epoch(self, x_train):
 
         train_set = torch.from_numpy(x_train.values)
+        train_set[torch.isnan(train_set)] = 0
         indices = np.arange(len(train_set))
 
         self.tabnet_model.eval()
@@ -318,11 +323,21 @@ class TabNet_Model(Model):
         loss = (pred - label) ** 2
         return torch.mean(loss)
 
+class FinetuneModel(nn.Module):
+    def __init__(self, input_dim, output_dim, trained_model):
+        super().__init__()
+        self.model = trained_model
+        self.fc = nn.Linear(input_dim, output_dim)
+    def forward(self, x, priors):
+        return self.fc(self.model(x, priors)[0]).squeeze()# take the vec out
+
+
 class DecoderStep(nn.Module):
     def __init__(self, inp_dim, out_dim, shared, n_ind, vbs, device):
         super().__init__()
         self.fea_tran = FeatureTransformer(inp_dim, out_dim, shared, n_ind, vbs, device)
-        self.fc = nn.Linear(out_dim, out_dim).to(device)
+        self.fc = nn.Linear(out_dim, out_dim)
+        
     
     def forward(self, x):
         x = self.fea_tran(x)
@@ -340,8 +355,9 @@ class TabNet_Decoder(nn.Module):
         super().__init__()
         if n_shared > 0:
             self.shared = nn.ModuleList()
-            for x in range(n_shared):
-                self.shared.append(None) # preset the linear function we will use
+            self.shared.append(nn.Linear(inp_dim, 2*out_dim))
+            for x in range(n_shared - 1):
+                self.shared.append(nn.Linear(out_dim, 2*out_dim)) # preset the linear function we will use
         else:
             self.shared=None
         self.n_steps = n_steps

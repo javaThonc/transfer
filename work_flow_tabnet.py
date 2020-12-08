@@ -64,7 +64,7 @@ if __name__ == "__main__":
                     "kwargs": DATA_HANDLER_CONFIG
                 },
                 'segments': {
-                    'pretrain': ("2008-01-01", "2020-08-01")
+                    'pretrain': ("2008-01-01", "2020-08-01"),
                     "train": ("2008-01-01", "2014-12-31"),
                     "valid": ("2015-01-01", "2016-12-31"),
                     "test": ("2017-01-01", "2020-08-01"),
@@ -77,8 +77,8 @@ if __name__ == "__main__":
     model = init_instance_by_config(task['model'])
     dataset = init_instance_by_config(task['dataset'])
     
-    model.pretrain(dataset)
-    model.fit(dataset, pretrain_file = '')
+    #model.pretrain(dataset)
+    model.fit(dataset, pretrain_file='./pretrain/best.model')
 
     pred_score = model.predict(dataset)
 
