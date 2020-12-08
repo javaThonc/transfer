@@ -32,7 +32,14 @@ from ...data.dataset.handler import DataHandlerLP
 
 class TabNet_Model(Model):
     def __init__(self, d_feat=158, out_dim = 64, final_out_dim = 1, batch_size = 4096, n_d=64, n_a=64, n_shared=2, n_ind=2,
-     n_steps=5, n_epochs=100, pretrain_n_epochs=50, relax=1.2, vbs=2048, seed = 710, optimizer='adam', loss = 'mse', metric = '', early_stop = 20, GPU='1', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
+     n_steps=5, n_epochs=100, pretrain_n_epochs=50, relax=1.2, vbs=2048, seed = 710, optimizer='adam', loss = 'mse', 
+     metric = '', early_stop = 20, GPU='1', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
+    """
+    TabNet model for Qlib
+
+    Args：
+    ps: probability to generate the bernoulli mask 
+    """
         # set hyper-parameters.
         self.d_feat = d_feat
         self.out_dim = out_dim
@@ -53,9 +60,11 @@ class TabNet_Model(Model):
         self.logger.info(
                 "TabNet:"
                 "\nbatch_size : {}"
-                "\nvirtual bs : {}".format(
+                "\nvirtual bs : {}"
+                "\nGPU : {}".format(
                     self.batch_size,
-                    vbs
+                    vbs,
+                    GPU
                 )
         )
         np.random.seed(self.seed)
@@ -80,6 +89,10 @@ class TabNet_Model(Model):
         )
         df_train.fillna(df_train.mean(), inplace = True)
         x_train = df_train["feature"]
+
+        # Early stop setup
+        stop_steps = 0
+        train_loss = 0
         best_loss = np.inf
 
         for epoch_idx in range(self.pretrain_n_epochs):
@@ -89,10 +102,16 @@ class TabNet_Model(Model):
             self.logger.info("evaluating...")
             train_loss = self.pretrain_test_epoch(x_train)
             self.logger.info("train %.6f" % (train_loss))
+            
             if train_loss < best_loss:
             	self.logger.info("Save Model...")
             	torch.save(self.tabnet_model.state_dict(), pretrain_file)
             	best_loss = train_loss
+            else:
+            	stop_steps+=1
+            	if stop_steps >= self.early_stop:
+            		self.logger.info("early stop")
+                    break
 
     
     
@@ -145,14 +164,13 @@ class TabNet_Model(Model):
                 best_score = val_score
                 stop_steps = 0
                 best_epoch = epoch_idx
-            
-            
             else:
                 stop_steps += 1
                 if stop_steps >= self.early_stop:
                     self.logger.info("early stop")
                     break
         self.logger.info("best score: %.6lf @ %d" % (best_score, best_epoch))
+
 
     def predict(self, dataset):
         if not self._fitted:
@@ -259,7 +277,7 @@ class TabNet_Model(Model):
             S_mask = S_mask.to(self.device)
             feature = x_train_values.float().to(self.device)
             label = y_train_values.float().to(self.device)
-            priors = 1-S_mask
+            priors = 1 - S_mask
             (vec, sparse_loss) = self.tabnet_model(feature, priors)
             f = self.tabnet_decoder(vec)
             loss = self.pretrain_loss_fn(label, f, S_mask) 
@@ -323,7 +341,11 @@ class TabNet_Model(Model):
         loss = (pred - label) ** 2
         return torch.mean(loss)
 
+
 class FinetuneModel(nn.Module):
+	"""
+	FinuetuneModel for adding a layer by the end
+	"""
     def __init__(self, input_dim, output_dim, trained_model):
         super().__init__()
         self.model = trained_model
@@ -530,7 +552,7 @@ class DecisionStep(nn.Module):
 
 
 
-def _make_ix_like(input, dim=0):
+def make_ix_like(input, dim=0):
     d = input.size(dim)
     rho = torch.arange(1, d + 1, device=input.device, dtype=input.dtype)
     view = [1] * input.dim()
@@ -538,13 +560,15 @@ def _make_ix_like(input, dim=0):
     return rho.view(view).transpose(0, dim)
 
 class SparsemaxFunction(Function):
-
+	"""
+	SparseMax function for replacing reLU
+	"""
     @staticmethod
     def forward(ctx, input, dim=-1):
         ctx.dim = dim
         max_val, _ = input.max(dim=dim, keepdim=True)
         input -= max_val  # same numerical stability trick as for softmax
-        tau, supp_size = SparsemaxFunction._threshold_and_support(input, dim=dim)
+        tau, supp_size = SparsemaxFunction.threshold_and_support(input, dim=dim)
         output = torch.clamp(input - tau, min=0)
         ctx.save_for_backward(supp_size, output)
         return output
@@ -562,10 +586,10 @@ class SparsemaxFunction(Function):
         return grad_input, None
 
     @staticmethod
-    def _threshold_and_support(input, dim=-1):
+    def threshold_and_support(input, dim=-1):
         input_srt, _ = torch.sort(input, descending=True, dim=dim)
         input_cumsum = input_srt.cumsum(dim) - 1
-        rhos = _make_ix_like(input, dim)
+        rhos = make_ix_like(input, dim)
         support = rhos * input_srt > input_cumsum
 
         support_size = support.sum(dim=dim).unsqueeze(dim)

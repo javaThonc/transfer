@@ -42,10 +42,29 @@ if __name__ == "__main__":
     DATA_HANDLER_CONFIG = {
         "start_time": "2008-01-01",
         "end_time": "2020-08-01",
-        "fit_start_time":"2008-01-01",
-        "fit_end_time":"2014-12-31",
+        "fit_start_time": "2008-01-01",
+        "fit_end_time": "2014-12-31",
         "instruments": MARKET,
+        "infer_processors": [{
+            "class": "RobustZScoreNorm",
+            "kwargs": {
+                "fields_group": "feature",
+                "clip_outlier": True,
+            }},
+            {"class": "Fillna",
+             "kwargs": {
+                 "fields_group": "feature",
+             }},
+        ],
+        "learn_processors": [{
+            "class": "DropnaLabel", }, {
+            "class": "CSRankNorm",
+            "kwargs": {
+                "fields_group": "label"
+            }}],
+        "label": ["Ref($close, -2) / Ref($close, -1) - 1"],
     }
+
 
     task = {
         "model": {
