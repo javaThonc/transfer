@@ -45,23 +45,15 @@ if __name__ == "__main__":
         "fit_start_time": "2008-01-01",
         "fit_end_time": "2014-12-31",
         "instruments": MARKET,
-        "infer_processors": [{
-            "class": "RobustZScoreNorm",
-            "kwargs": {
-                "fields_group": "feature",
-                "clip_outlier": True,
-            }},
+        "infer_processors": [
             {"class": "Fillna",
              "kwargs": {
                  "fields_group": "feature",
              }},
         ],
-        "learn_processors": [{
-            "class": "DropnaLabel", }, {
-            "class": "CSRankNorm",
-            "kwargs": {
-                "fields_group": "label"
-            }}],
+        "learn_processors": [
+            {"class": "DropnaLabel", }
+        ],
         "label": ["Ref($close, -2) / Ref($close, -1) - 1"],
     }
 
@@ -83,7 +75,8 @@ if __name__ == "__main__":
                     "kwargs": DATA_HANDLER_CONFIG
                 },
                 'segments': {
-                    'pretrain': ("2008-01-01", "2020-08-01"),
+                    'pretrain': ("2008-01-01", "2016-12-31"),
+                    'pretrain_validation': ("2017-01-0", "2020-08-01"),
                     "train": ("2008-01-01", "2014-12-31"),
                     "valid": ("2015-01-01", "2016-12-31"),
                     "test": ("2017-01-01", "2020-08-01"),

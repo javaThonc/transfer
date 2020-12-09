@@ -34,12 +34,12 @@ class TabNet_Model(Model):
     def __init__(self, d_feat=158, out_dim = 64, final_out_dim = 1, batch_size = 4096, n_d=64, n_a=64, n_shared=2, n_ind=2,
      n_steps=5, n_epochs=100, pretrain_n_epochs=50, relax=1.2, vbs=2048, seed = 710, optimizer='adam', loss = 'mse', 
      metric = '', early_stop = 20, GPU='1', pretrain_loss = 'custom', ps = 0.3, lr = 0.01):
-    """
-    TabNet model for Qlib
+        """
+        TabNet model for Qlib
 
-    Args：
-    ps: probability to generate the bernoulli mask 
-    """
+        Args：
+        ps: probability to generate the bernoulli mask 
+        """
         # set hyper-parameters.
         self.d_feat = d_feat
         self.out_dim = out_dim
@@ -74,21 +74,33 @@ class TabNet_Model(Model):
         self.tabnet_decoder = TabNet_Decoder(self.out_dim, self.d_feat, n_shared, n_ind, vbs, n_steps, self.device).to(self.device)
   
         if optimizer.lower() == "adam":
-            self.train_optimizer = optim.Adam(list(self.tabnet_model.parameters())+list(self.tabnet_decoder.parameters()), lr=self.lr)
+            self.pretrain_optimizer = optim.Adam(list(self.tabnet_model.parameters())+list(self.tabnet_decoder.parameters()), lr=self.lr)
+            self.train_optimizer = optim.Adam(self.tabnet_model.parameters(), lr=self.lr)
+
         elif optimizer.lower() == "gd":
-            self.train_optimizer = optim.SGD(list(self.tabnet_model.parameters())+list(self.tabnet_decoder.parameters()), lr=self.lr)
+            self.pretrain_optimizer = optim.SGD(list(self.tabnet_model.parameters())+list(self.tabnet_decoder.parameters()), lr=self.lr)
+            self.train_optimizer = optim.SGD(self.tabnet_model.parameters(), lr=self.lr)
         else:
             raise NotImplementedError("optimizer {} is not supported!".format(optimizer))
     
 
     def pretrain(self, dataset = DatasetH, pretrain_file = './pretrain/best.model'):
-        df_train = dataset.prepare(
-            "pretrain",
+        # make a directory if pretrian director does not exist
+        if pretrain_file.startswith('./pretrain') and not os.path.exists('pretrain'):
+            self.logger.info("make folder to store model...")
+            os.makedirs('pretrain')
+
+        [df_train, df_valid] = dataset.prepare(
+            ["pretrain", "pretrain_validation"],
             col_set=["feature", "label"],
             data_key=DataHandlerLP.DK_L,
         )
+        
         df_train.fillna(df_train.mean(), inplace = True)
+        df_valid.fillna(df_valid.mean(), inplace = True)
+
         x_train = df_train["feature"]
+        x_valid = df_valid["feature"]
 
         # Early stop setup
         stop_steps = 0
@@ -101,12 +113,13 @@ class TabNet_Model(Model):
             self.pretrain_epoch(x_train)
             self.logger.info("evaluating...")
             train_loss = self.pretrain_test_epoch(x_train)
-            self.logger.info("train %.6f" % (train_loss))
+            valid_loss = self.pretrain_test_epoch(x_valid)
+            self.logger.info("train %.6f, valid %.6f" % (train_loss, valid_loss))
             
-            if train_loss < best_loss:
+            if valid_loss < best_loss:
                 self.logger.info("Save Model...")
                 torch.save(self.tabnet_model.state_dict(), pretrain_file)
-                best_loss = train_loss
+                best_loss = valid_loss
             else:
                 stop_steps+=1
                 if stop_steps >= self.early_stop:
@@ -124,7 +137,7 @@ class TabNet_Model(Model):
         pretrain_file = None
     ):
         if(pretrain_file != None):
-            #there are pretrained model, load the model
+            #there is a  pretrained model, load the model
             self.logger.info("Load Pretrain model")
             self.tabnet_model.load_state_dict(torch.load(pretrain_file))
 
@@ -282,12 +295,11 @@ class TabNet_Model(Model):
             f = self.tabnet_decoder(vec)
             loss = self.pretrain_loss_fn(label, f, S_mask) 
 
-            self.train_optimizer.zero_grad()
+            self.pretrain_optimizer.zero_grad()
             loss.backward()
-            self.train_optimizer.step()
+            self.pretrain_optimizer.step()
 
     def pretrain_test_epoch(self, x_train):
-
         train_set = torch.from_numpy(x_train.values)
         train_set[torch.isnan(train_set)] = 0
         indices = np.arange(len(train_set))
@@ -317,7 +329,6 @@ class TabNet_Model(Model):
             losses.append(loss.item())
 
         return np.mean(losses)
-
 
     def pretrain_loss_fn(self, f_hat, f, S):
         down_mean = torch.mean(f, dim=0)
